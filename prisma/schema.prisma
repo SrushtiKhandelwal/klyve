@@ -103,6 +103,10 @@ model Workspace {
   segments   Segment[]
   imports    ContactImport[]
 
+  sendingProviders SendingProvider[]
+  senders          Sender[]
+  sendingDomains   SendingDomain[]
+
   @@map("workspace")
 }
 
@@ -254,4 +258,101 @@ model ContactImport {
 
   @@index([workspaceId, createdAt])
   @@map("contact_import")
+}
+
+// ─────────────────────────────────────────────
+// Phase 2: Sending
+// Users connect THEIR OWN email service. We store their credentials
+// encrypted (AES-256-GCM, see src/lib/crypto.ts) and never send them
+// back to the browser.
+// ─────────────────────────────────────────────
+
+enum ProviderType {
+  SMTP // any SMTP server: Gmail, Outlook, Zoho, Brevo SMTP, your own...
+  AMAZON_SES
+  RESEND
+  SENDGRID
+  MAILGUN
+  POSTMARK
+}
+
+enum ProviderStatus {
+  UNTESTED // saved, connection not checked yet
+  CONNECTED // last check succeeded
+  FAILED // last check or send failed (see lastError)
+}
+
+model SendingProvider {
+  id              String         @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// The user's own label, e.g. "Company SES" or "My Gmail".
+  name            String
+  type            ProviderType
+  /// Encrypted JSON blob of the credentials (shape per type: src/lib/email/provider-configs.ts).
+  credentials     String
+  /// Safe-to-show summary, e.g. { "host": "smtp.gmail.com", "user": "me@gmail.com", "key": "••••a1b2" }.
+  credentialsHint Json           @default("{}")
+  status          ProviderStatus @default(UNTESTED)
+  lastTestedAt    DateTime?
+  lastError       String?
+  /// The provider used when a campaign doesn't pick one. One per workspace.
+  isDefault       Boolean        @default(false)
+  /// Sending speed limit, so we never exceed the provider's rate (emails/second).
+  maxPerSecond    Int            @default(5)
+  /// Optional daily cap set by the user (null = no cap from our side).
+  dailyLimit      Int?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  senders Sender[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("sending_provider")
+}
+
+/// A "From" address the workspace may send campaigns from.
+/// The user proves they own it by entering a code we email to it.
+model Sender {
+  id                    String           @id @default(cuid())
+  workspaceId           String
+  workspace             Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// Lower-cased, e.g. "news@acme.com".
+  email                 String
+  /// Display name, e.g. "Acme News".
+  name                  String
+  replyTo               String?
+  /// Provider used to send the verification code (and the sender's default provider).
+  providerId            String?
+  provider              SendingProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  verifiedAt            DateTime?
+  /// SHA-256 hash of the 6-digit code; the plain code is never stored.
+  verificationCodeHash  String?
+  verificationExpiresAt DateTime?
+  verificationAttempts  Int              @default(0)
+  verificationSentAt    DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@unique([workspaceId, email])
+  @@map("sender")
+}
+
+/// A domain whose DNS records (SPF / DKIM / DMARC) we check and explain.
+model SendingDomain {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// Lower-cased, e.g. "acme.com".
+  domain        String
+  /// DKIM selectors to look up, e.g. ["resend", "s1"]; filled from the provider or by the user.
+  dkimSelectors String[]  @default([])
+  /// Last check results (shape: src/lib/email/dns-check.ts).
+  lastResult    Json?
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([workspaceId, domain])
+  @@map("sending_domain")
 }

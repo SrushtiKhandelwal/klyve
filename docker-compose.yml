@@ -20,5 +20,20 @@ services:
       timeout: 5s
       retries: 10
 
+  # Fake mail server for development: catches every email instead of sending it.
+  # Read them at http://localhost:8025. In the app, add an SMTP provider with
+  # host "localhost", port 1025, SSL off, any username/password.
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    container_name: email-tool-mailpit
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1" # accept any login, so the app's SMTP form works
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1" # allow login without TLS (local only)
+      MP_MAX_MESSAGES: "5000"
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # web inbox
+
 volumes:
   db-data:

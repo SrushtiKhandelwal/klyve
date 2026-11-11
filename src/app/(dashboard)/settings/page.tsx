@@ -1,7 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import type { Metadata } from "next";
 import { Server } from "lucide-react";
-import { EmptyState } from "@/components/dashboard/empty-state";
+import Link from "next/link";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireActiveWorkspace } from "@/lib/workspace";
@@ -27,12 +27,20 @@ export default function SettingsPage() {
         </Suspense>
       </section>
 
-      <EmptyState
-        icon={Server}
-        title="Sending provider"
-        description="Connect your own email service (Amazon SES, Resend, SMTP and more) so your campaigns can be delivered."
-        phase={2}
-      />
+      <Link
+        href="/settings/providers"
+        className="flex items-center gap-4 rounded-xl border bg-white p-5 transition-colors hover:border-emerald-300"
+      >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+          <Server className="size-5" />
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="font-medium text-zinc-900">Sending providers</span>
+          <span className="text-sm text-zinc-500">
+            Connect your own email service (Amazon SES, Resend, SMTP and more) so your campaigns can be delivered.
+          </span>
+        </span>
+      </Link>
     </PageContainer>
   );
 }
