@@ -26,4 +26,11 @@ export type SendResult =
       retryable: boolean;
     };
 
-export type ConnectionCheckResult = { ok: true; detail?: string } | { ok: false; error: string };
+export type ConnectionCheckResult =
+  | {
+      ok: true;
+      detail?: string;
+      /** Rate limits the provider reported (e.g. Amazon SES quotas), to suggest a speed limit. */
+      limits?: { maxPerSecond?: number; max24Hour?: number };
+    }
+  | { ok: false; error: string };

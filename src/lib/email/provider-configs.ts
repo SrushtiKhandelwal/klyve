@@ -36,7 +36,10 @@ export const smtpSchema = z.object({
   host: trimmed("Host").regex(/^[a-zA-Z0-9.-]+$/, "Enter a hostname like smtp.example.com."),
   port: z.coerce.number().int().min(1).max(65535),
   /** true = TLS from the start (usually port 465). false = STARTTLS upgrade (usually 587). */
-  secure: z.coerce.boolean(),
+  // Not z.coerce.boolean(): that turns the TEXT "false" into true.
+  secure: z
+    .union([z.boolean(), z.enum(["true", "false", "on", "off"]).transform((v) => v === "true" || v === "on")])
+    .default(false),
   username: trimmed("Username"),
   password: secret("Password"),
 });

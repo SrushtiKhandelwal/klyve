@@ -8,6 +8,10 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
   INVALID_EMAIL: "Please enter a valid email address.",
   PASSWORD_TOO_SHORT: "Your password must be at least 8 characters.",
   PASSWORD_TOO_LONG: "Your password is too long.",
+  // Password reset and email verification links:
+  INVALID_TOKEN: "This link is invalid or has already been used. Please request a new one.",
+  TOKEN_EXPIRED: "This link has expired. Please request a new one.",
+  EMAIL_ALREADY_VERIFIED: "Your email address is already verified.",
 };
 
 type AuthError = { code?: string; message?: string; status?: number };

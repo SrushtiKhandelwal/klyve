@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -8,16 +8,25 @@ type FormFieldProps = ComponentProps<"input"> & {
   id: string;
   label: string;
   error?: string;
+  /** Optional extra shown at the right of the label, e.g. a "Forgot password?" link. */
+  labelAction?: ReactNode;
 };
 
-export function FormField({ id, label, error, ...inputProps }: FormFieldProps) {
+export function FormField({ id, label, error, labelAction, ...inputProps }: FormFieldProps) {
   const errorId = `${id}-error`;
 
   return (
     <div className="grid gap-2">
       {/* htmlFor ties the label to the input, so clicking the label focuses
           the field and screen readers read the label aloud. */}
-      <Label htmlFor={id}>{label}</Label>
+      {labelAction ? (
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor={id}>{label}</Label>
+          {labelAction}
+        </div>
+      ) : (
+        <Label htmlFor={id}>{label}</Label>
+      )}
       <Input
         id={id}
         name={id}

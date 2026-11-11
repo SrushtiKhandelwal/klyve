@@ -1,14 +1,33 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Loader2Icon } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { CircleCheckIcon, Loader2Icon } from "lucide-react";
 import { signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/auth/form-field";
 import { friendlyAuthError, looksLikeEmail } from "@/components/auth/auth-errors";
 
 type FieldErrors = { email?: string; password?: string };
+
+// Green "Password updated" notice, shown after /reset-password sends the
+// user here as /login?reset=1. It reads the URL, so (Next.js rule) it must be
+// rendered inside <Suspense>; the rest of the form doesn't have to wait.
+function ResetSuccessNotice() {
+  const searchParams = useSearchParams();
+  if (searchParams.get("reset") !== "1") return null;
+
+  return (
+    <div
+      role="status"
+      className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+    >
+      <CircleCheckIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      <span>Your password was changed. Log in with your new password.</span>
+    </div>
+  );
+}
 
 export function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -51,6 +70,10 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="grid gap-5">
+      <Suspense fallback={null}>
+        <ResetSuccessNotice />
+      </Suspense>
+
       {/* Server errors (like a wrong password) appear here and are read
           out by screen readers thanks to role="alert". */}
       {formError && (
@@ -78,6 +101,14 @@ export function LoginForm() {
         autoComplete="current-password"
         error={fieldErrors.password}
         disabled={loading}
+        labelAction={
+          <Link
+            href="/forgot-password"
+            className="text-sm font-medium text-emerald-700 hover:underline"
+          >
+            Forgot password?
+          </Link>
+        }
       />
 
       <Button

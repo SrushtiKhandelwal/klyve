@@ -8,6 +8,7 @@ import {
   WorkspaceSwitcherSkeleton,
 } from "@/components/dashboard/skeletons";
 import { UserMenu } from "@/components/dashboard/user-menu";
+import { VerifyEmailBanner } from "@/components/dashboard/verify-email-banner";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 
 // The logged-in app shell: sidebar + main content, shared by every page in
@@ -39,6 +40,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </Suspense>
 
       <SidebarShell brand={<BrandMark />} sidebar={<SidebarContents />}>
+        {/* "Please verify your email" strip; renders nothing once verified. */}
+        <Suspense fallback={null}>
+          <VerifyEmailBanner />
+        </Suspense>
         {children}
       </SidebarShell>
     </>
