@@ -4,7 +4,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "Log in", // shown as "Log in | MailFlow" (see app/layout.tsx)
+  title: "Log in", // shown as "Log in | Klyve" (see app/layout.tsx)
 };
 
 // This page is a static shell; the interactive form is a Client Component.

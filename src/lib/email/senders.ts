@@ -270,9 +270,9 @@ export async function deleteSender(workspaceId: string, senderId: string): Promi
 // The daily limits need a counter that our Sender table doesn't have. Instead of
 // changing the schema we add one short-lived row per code sent to the existing
 // `verification` table (the one Better Auth uses for its tokens). Our rows use
-// their own "mailflow:sender-code:" prefix so they can never clash with Better
+// their own "klyve:sender-code:" prefix so they can never clash with Better
 // Auth's, hold no secrets (value is just "sent") and expire after 24 hours.
-const COUNTER_PREFIX = "mailflow:sender-code:";
+const COUNTER_PREFIX = "klyve:sender-code:";
 const counterKey = (workspaceId: string, email: string) => `${COUNTER_PREFIX}${workspaceId}:${email}`;
 const DAY_MS = 24 * 60 * 60 * 1000;
 

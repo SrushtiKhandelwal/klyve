@@ -2,7 +2,7 @@ import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
 import { BRAND } from "@/lib/brand";
 
-// Sends MailFlow's OWN emails (password reset, email verification).
+// Sends Klyve's OWN emails (password reset, email verification).
 // These are NOT campaign emails: they always go through the SMTP server in
 // SYSTEM_SMTP_URL, never through a customer's sending provider.
 //
@@ -62,7 +62,7 @@ export async function sendSystemEmail({ to, subject, html, text }: SystemEmail):
   if (!smtpUrl) {
     if (isProduction) {
       throw new Error(
-        "SYSTEM_SMTP_URL is not set. MailFlow can't send password-reset or verification emails. " +
+        "SYSTEM_SMTP_URL is not set. Klyve can't send password-reset or verification emails. " +
           "Set it to your SMTP server, e.g. smtp://user:pass@smtp.example.com:587",
       );
     }

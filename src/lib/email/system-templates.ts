@@ -1,7 +1,7 @@
 import "server-only";
 import { BRAND } from "@/lib/brand";
 
-// HTML + plain-text bodies for MailFlow's own emails.
+// HTML + plain-text bodies for Klyve's own emails.
 // Email apps ignore <style> tags and modern CSS, so everything is a simple
 // table with inline styles. Every email also has a plain-text version for
 // apps that don't show HTML (and because spam filters like it).

@@ -123,7 +123,7 @@ export function ProvidersEmptyState({ canManage }: { canManage: boolean }) {
       </span>
       <h2 className="mt-5 text-lg font-semibold text-zinc-900">Connect your first provider</h2>
       <p className="mt-1.5 max-w-md text-sm text-zinc-500">
-        MailFlow is free because your emails go out through your own email service: Gmail, Amazon SES, Resend and
+        Klyve is free because your emails go out through your own email service: Gmail, Amazon SES, Resend and
         others. That also means there&apos;s no daily cap from us; only your provider&apos;s own limits apply.
       </p>
       <ul className="mt-5 flex flex-col gap-2 text-left text-sm text-zinc-600 sm:flex-row sm:gap-6">

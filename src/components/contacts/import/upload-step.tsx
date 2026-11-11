@@ -102,7 +102,7 @@ export function UploadStep({
         <Button
           type="button"
           variant="outline"
-          onClick={() => downloadTextFile("mailflow-sample-contacts.csv", buildSampleCsv(attributes))}
+          onClick={() => downloadTextFile("klyve-sample-contacts.csv", buildSampleCsv(attributes))}
         >
           <Download aria-hidden />
           Download sample CSV

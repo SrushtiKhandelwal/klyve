@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  // A page that sets title: "Log in" shows as "Log in | MailFlow" in the tab.
+  // A page that sets title: "Log in" shows as "Log in | Klyve" in the tab.
   // Pages without their own title just show the brand name.
   title: { default: BRAND.name, template: `%s | ${BRAND.name}` },
   description: BRAND.tagline,

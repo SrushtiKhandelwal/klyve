@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { SignupForm } from "@/components/auth/signup-form";
 
 export const metadata: Metadata = {
-  title: "Sign up", // shown as "Sign up | MailFlow" (see app/layout.tsx)
+  title: "Sign up", // shown as "Sign up | Klyve" (see app/layout.tsx)
 };
 
 // This page is a static shell; the interactive form is a Client Component.

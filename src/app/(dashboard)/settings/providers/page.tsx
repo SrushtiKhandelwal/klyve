@@ -18,7 +18,7 @@ export default function ProvidersPage() {
     <PageContainer>
       <PageHeader
         title="Sending providers"
-        description="The email services MailFlow uses to deliver your campaigns. You bring your own, so sending stays free."
+        description="The email services Klyve uses to deliver your campaigns. You bring your own, so sending stays free."
       />
       {/* Providers depend on the logged-in user's workspace, so they stream in. */}
       <Suspense fallback={<ProvidersSkeleton />}>

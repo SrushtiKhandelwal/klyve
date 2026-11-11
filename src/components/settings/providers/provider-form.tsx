@@ -97,7 +97,7 @@ export function ProviderForm({
       const next: ConfigValues = { ...prev, host: chosen.host, port: String(chosen.port), secure: chosen.secure };
       // Mailpit accepts any login, so fill one in to save typing (dev only).
       if (chosen.id === "mailpit") {
-        if (!prev.username) next.username = "test@mailflow.local";
+        if (!prev.username) next.username = "test@klyve.local";
         if (!prev.password && !editing) next.password = "mailpit";
       }
       return next;
@@ -206,7 +206,7 @@ export function ProviderForm({
         <div className="border-b px-5 py-4">
           <h2 className="font-semibold text-zinc-900">Sending limits</h2>
           <p className="text-sm text-zinc-500">
-            MailFlow never adds a cap of its own. These just keep you inside your provider&apos;s limits.
+            Klyve never adds a cap of its own. These just keep you inside your provider&apos;s limits.
           </p>
         </div>
         <div className="grid gap-5 px-5 py-5 sm:grid-cols-2">
@@ -289,7 +289,7 @@ export function TestResultBanner({ result, className }: { result: ProviderCheckO
         <p className="font-medium">{result.ok ? "Connection works" : "Saved, but the connection test failed"}</p>
         <p className="break-words">
           {result.ok
-            ? (result.detail ?? "MailFlow could log in to your provider.")
+            ? (result.detail ?? "Klyve could log in to your provider.")
             : `${result.error} The provider is kept and marked as Failed until a test succeeds.`}
         </p>
       </div>
@@ -432,7 +432,7 @@ function ConfigField({
         value={typeof value === "string" ? value : ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={secretOnEdit ? "••••••••  (unchanged)" : field.placeholder}
-        // Stop browsers from autofilling the user's own MailFlow password here.
+        // Stop browsers from autofilling the user's own Klyve password here.
         autoComplete={field.kind === "password" ? "new-password" : "off"}
         spellCheck={false}
         readOnly={disabled}

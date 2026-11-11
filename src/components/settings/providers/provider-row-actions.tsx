@@ -152,7 +152,7 @@ function DeleteProviderDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete “{provider.name}”?</AlertDialogTitle>
           <AlertDialogDescription>
-            MailFlow will forget these credentials. Your account with the provider itself is not affected.
+            Klyve will forget these credentials. Your account with the provider itself is not affected.
           </AlertDialogDescription>
         </AlertDialogHeader>
 

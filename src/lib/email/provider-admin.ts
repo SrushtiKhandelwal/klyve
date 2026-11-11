@@ -490,7 +490,7 @@ export function buildTestEmail({
 }): OutgoingEmail {
   const typeLabel = PROVIDERS[providerType].label;
   const time = `${now.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC`;
-  const subject = `Your MailFlow sending provider "${providerName}" works`;
+  const subject = `Your Klyve sending provider "${providerName}" works`;
   // The provider name is typed by users, so escape it before putting it in HTML.
   const safeName = escapeHtml(providerName);
 
@@ -503,7 +503,7 @@ export function buildTestEmail({
           <div style="display:inline-block;padding:4px 10px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:12px;font-weight:600;">Test email</div>
           <h1 style="margin:16px 0 8px;font-size:20px;line-height:1.3;">It works! 🎉</h1>
           <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3f3f46;">
-            Your sending provider <strong>&ldquo;${safeName}&rdquo;</strong> delivered this email, so MailFlow can send your campaigns through it.
+            Your sending provider <strong>&ldquo;${safeName}&rdquo;</strong> delivered this email, so Klyve can send your campaigns through it.
           </p>
         </td>
       </tr>
@@ -518,7 +518,7 @@ export function buildTestEmail({
       </tr>
       <tr>
         <td style="padding:16px 28px;border-top:1px solid #e4e4e7;font-size:12px;color:#a1a1aa;">
-          You received this because someone clicked &ldquo;Send test email&rdquo; in MailFlow.
+          You received this because someone clicked &ldquo;Send test email&rdquo; in Klyve.
         </td>
       </tr>
     </table>
@@ -528,17 +528,17 @@ export function buildTestEmail({
   const text = [
     "It works!",
     "",
-    `Your sending provider "${providerName}" delivered this email, so MailFlow can send your campaigns through it.`,
+    `Your sending provider "${providerName}" delivered this email, so Klyve can send your campaigns through it.`,
     "",
     `Provider: ${providerName}`,
     `Type: ${typeLabel}`,
     `Sent at: ${time}`,
     "",
-    'You received this because someone clicked "Send test email" in MailFlow.',
+    'You received this because someone clicked "Send test email" in Klyve.',
   ].join("\n");
 
   return {
-    from: { email: from, name: "MailFlow test" },
+    from: { email: from, name: "Klyve test" },
     to: { email: to },
     subject,
     html,
