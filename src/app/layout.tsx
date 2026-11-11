@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
@@ -28,7 +29,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
+        {/* Lets any component use <Tooltip> hover hints. */}
+        <TooltipProvider>{children}</TooltipProvider>
         {/* Pop-up notifications. Call toast("...") from "sonner" anywhere. */}
         <Toaster richColors position="top-right" />
       </body>

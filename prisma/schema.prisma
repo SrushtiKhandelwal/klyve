@@ -97,6 +97,12 @@ model Workspace {
 
   members WorkspaceMember[]
 
+  contacts   Contact[]
+  lists      ContactList[]
+  attributes ContactAttribute[]
+  segments   Segment[]
+  imports    ContactImport[]
+
   @@map("workspace")
 }
 
@@ -112,4 +118,140 @@ model WorkspaceMember {
   @@unique([workspaceId, userId])
   @@index([userId])
   @@map("workspace_member")
+}
+
+// ─────────────────────────────────────────────
+// Phase 1: Contacts
+// EVERY model below has a workspaceId. Every query MUST filter by the
+// active workspace's id — that is what keeps customers' data apart.
+// ─────────────────────────────────────────────
+
+/// Whether we're allowed to email this contact.
+enum ContactStatus {
+  SUBSCRIBED // can receive campaigns
+  UNSUBSCRIBED // clicked unsubscribe or was unsubscribed by the workspace
+  BOUNCED // the address doesn't exist / keeps failing (set in Phase 5)
+  COMPLAINED // marked one of our emails as spam (set in Phase 5)
+}
+
+model Contact {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// Always stored lower-cased and trimmed (see normalizeEmail()).
+  email       String
+  firstName   String?
+  lastName    String?
+  status      ContactStatus @default(SUBSCRIBED)
+  /// Values for the workspace's custom attributes, keyed by ContactAttribute.key,
+  /// e.g. { "CITY": "Pune", "AGE": 31, "VIP": true, "BIRTHDAY": "1994-05-12" }.
+  attributes  Json          @default("{}")
+  /// Where the contact came from: "manual", "import", "form", "api".
+  source      String        @default("manual")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  lists ListMembership[]
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, status])
+  @@map("contact")
+}
+
+model ContactList {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members ListMembership[]
+  imports ContactImport[]
+
+  @@unique([workspaceId, name])
+  @@map("contact_list")
+}
+
+/// Which contacts are in which lists (a contact can be in many lists).
+model ListMembership {
+  listId    String
+  list      ContactList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  addedAt   DateTime    @default(now())
+
+  @@id([listId, contactId])
+  @@index([contactId])
+  @@map("list_membership")
+}
+
+enum AttributeType {
+  TEXT
+  NUMBER
+  DATE // stored as "YYYY-MM-DD" text in Contact.attributes
+  BOOLEAN
+}
+
+/// A custom field the workspace defined, e.g. CITY (text) or AGE (number).
+model ContactAttribute {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// UPPER_SNAKE_CASE, used in templates as {{ contact.CITY }}. Never changes.
+  key         String
+  /// Human-friendly name shown in the UI, e.g. "City".
+  label       String
+  type        AttributeType @default(TEXT)
+  createdAt   DateTime      @default(now())
+
+  @@unique([workspaceId, key])
+  @@map("contact_attribute")
+}
+
+/// A saved filter, e.g. "subscribed contacts in Pune who are VIP".
+/// Evaluated live every time, so it is always up to date.
+model Segment {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  /// The filter rules (shape defined in src/lib/segments/rules.ts).
+  rules       Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workspaceId, name])
+  @@map("segment")
+}
+
+enum ImportStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+/// History of CSV imports, with a summary of what happened.
+model ContactImport {
+  id          String       @id @default(cuid())
+  workspaceId String
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  fileName    String
+  status      ImportStatus @default(PROCESSING)
+  /// Optional list every imported contact was added to.
+  listId      String?
+  list        ContactList? @relation(fields: [listId], references: [id], onDelete: SetNull)
+  totalRows   Int          @default(0)
+  created     Int          @default(0)
+  updated     Int          @default(0)
+  skipped     Int          @default(0)
+  /// Up to ~100 problems, e.g. [{ "row": 12, "reason": "Invalid email" }].
+  errors      Json         @default("[]")
+  createdAt   DateTime     @default(now())
+  finishedAt  DateTime?
+
+  @@index([workspaceId, createdAt])
+  @@map("contact_import")
 }
