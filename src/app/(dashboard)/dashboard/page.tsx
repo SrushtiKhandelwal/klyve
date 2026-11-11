@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FileText, Send, Server, Users, type LucideIcon } from "lucide-react";
 import { PageContainer } from "@/components/dashboard/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,7 +9,8 @@ import { requireActiveWorkspace } from "@/lib/workspace";
 
 export const metadata: Metadata = { title: "Home" };
 
-type Step = { icon: LucideIcon; title: string; description: string };
+// `href` set = the feature exists, so the card becomes a link.
+type Step = { icon: LucideIcon; title: string; description: string; href?: string };
 
 const STEPS: Step[] = [
   {
@@ -20,6 +22,7 @@ const STEPS: Step[] = [
     icon: Users,
     title: "Import contacts",
     description: "Upload a CSV or add people by hand to build your first list.",
+    href: "/contacts/import",
   },
   {
     icon: FileText,
@@ -49,7 +52,7 @@ export default function DashboardPage() {
           {STEPS.map((step, index) => (
             <li
               key={step.title}
-              className="flex gap-4 rounded-xl border bg-white p-5 shadow-xs"
+              className={`relative flex gap-4 rounded-xl border bg-white p-5 shadow-xs ${step.href ? "transition-colors hover:border-emerald-300" : ""}`}
             >
               <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
                 <step.icon className="size-5" />
@@ -57,11 +60,24 @@ export default function DashboardPage() {
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <h3 className="font-medium text-zinc-900">
-                    <span className="text-zinc-400">{index + 1}.</span> {step.title}
+                    <span className="text-zinc-400">{index + 1}.</span>{" "}
+                    {step.href ? (
+                      // The stretched link makes the whole card clickable.
+                      <Link
+                        href={step.href}
+                        className="after:absolute after:inset-0 hover:text-emerald-700"
+                      >
+                        {step.title}
+                      </Link>
+                    ) : (
+                      step.title
+                    )}
                   </h3>
-                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500">
-                    Coming soon
-                  </span>
+                  {!step.href && (
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500">
+                      Coming soon
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm text-zinc-500">{step.description}</p>
               </div>
