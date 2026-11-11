@@ -1,0 +1,24 @@
+# Local development database.
+# Start it with:  docker compose up -d
+# Stop it with:   docker compose down        (your data is kept)
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: email-tool-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: emailtool
+      POSTGRES_PASSWORD: emailtool_dev_password
+      POSTGRES_DB: emailtool
+    ports:
+      - "5433:5432" # your computer's port 5433 -> Postgres inside the container
+    volumes:
+      - db-data:/var/lib/postgresql/data # keeps data when the container restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U emailtool -d emailtool"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:
