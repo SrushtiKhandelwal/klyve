@@ -15,13 +15,13 @@ datasource db {
 // ─────────────────────────────────────────────
 
 model User {
-  id            String    @id
+  id            String   @id
   name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
+  email         String   @unique
+  emailVerified Boolean  @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 
   sessions    Session[]
   accounts    Account[]
@@ -111,6 +111,8 @@ model Workspace {
   brandKit    BrandKit?
   mediaAssets MediaAsset[]
 
+  campaigns Campaign[]
+
   @@map("workspace")
 }
 
@@ -159,7 +161,8 @@ model Contact {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  lists ListMembership[]
+  lists              ListMembership[]
+  campaignRecipients CampaignRecipient[]
 
   @@unique([workspaceId, email])
   @@index([workspaceId, createdAt])
@@ -168,13 +171,13 @@ model Contact {
 }
 
 model ContactList {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   members ListMembership[]
   imports ContactImport[]
@@ -222,14 +225,14 @@ model ContactAttribute {
 /// A saved filter, e.g. "subscribed contacts in Pune who are VIP".
 /// Evaluated live every time, so it is always up to date.
 model Segment {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name        String
   /// The filter rules (shape defined in src/lib/segments/rules.ts).
   rules       Json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@unique([workspaceId, name])
   @@map("segment")
@@ -309,7 +312,9 @@ model SendingProvider {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  senders Sender[]
+  senders    Sender[]
+  campaigns  Campaign[]
+  dailyUsage ProviderDailyUsage[]
 
   @@unique([workspaceId, name])
   @@index([workspaceId])
@@ -338,6 +343,8 @@ model Sender {
   verificationSentAt    DateTime?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
+
+  campaigns Campaign[]
 
   @@unique([workspaceId, email])
   @@map("sender")
@@ -391,23 +398,23 @@ model EmailTemplate {
 
 /// The workspace's look: applied to new templates and starter templates.
 model BrandKit {
-  id             String    @id @default(cuid())
-  workspaceId    String    @unique
-  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  companyName    String    @default("")
+  id              String    @id @default(cuid())
+  workspaceId     String    @unique
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyName     String    @default("")
   /// Public URL of the logo (usually a MediaAsset URL).
-  logoUrl        String?
-  primaryColor   String    @default("#059669")
-  secondaryColor String    @default("#0f172a")
-  backgroundColor String   @default("#f4f4f5")
-  textColor      String    @default("#27272a")
-  fontFamily     String    @default("Arial, Helvetica, sans-serif")
+  logoUrl         String?
+  primaryColor    String    @default("#059669")
+  secondaryColor  String    @default("#0f172a")
+  backgroundColor String    @default("#f4f4f5")
+  textColor       String    @default("#27272a")
+  fontFamily      String    @default("Arial, Helvetica, sans-serif")
   /// Postal address: anti-spam laws (CAN-SPAM, etc.) require it in marketing email footers.
-  address        String    @default("")
-  websiteUrl     String?
+  address         String    @default("")
+  websiteUrl      String?
   /// e.g. { "instagram": "https://instagram.com/acme", "x": "..." }
-  socialLinks    Json      @default("{}")
-  updatedAt      DateTime  @updatedAt
+  socialLinks     Json      @default("{}")
+  updatedAt       DateTime  @updatedAt
 
   @@map("brand_kit")
 }
@@ -430,4 +437,123 @@ model MediaAsset {
 
   @@index([workspaceId, createdAt])
   @@map("media_asset")
+}
+
+// ─────────────────────────────────────────────
+// Phase 4: Campaigns
+// A campaign is one email sent to an audience (lists/segments).
+// When it launches we "freeze" the audience into CampaignRecipient rows,
+// one per contact, and a background worker sends them one by one.
+// That table is also what guarantees nobody gets the same campaign twice.
+// ─────────────────────────────────────────────
+
+enum CampaignStatus {
+  DRAFT // being written
+  SCHEDULED // will start at scheduledAt
+  SENDING // the worker is sending it
+  PAUSED // stopped by the user (or by us after a provider failure); can resume
+  SENT // every recipient was processed
+  CANCELLED // stopped for good by the user
+  FAILED // could not start or run (see lastError)
+}
+
+model Campaign {
+  id          String         @id @default(cuid())
+  workspaceId String
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  status      CampaignStatus @default(DRAFT)
+
+  subject   String @default("")
+  preheader String @default("")
+
+  /// Who it comes from. Must be a VERIFIED sender of the workspace to launch.
+  senderId   String?
+  sender     Sender?          @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  /// The provider used, fixed at launch (sender's provider, else the workspace default).
+  providerId String?
+  provider   SendingProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  /// Who gets it. Shape: src/lib/campaigns/audience.ts (lists, segments, exclusions).
+  audience Json @default("{}")
+
+  /// The campaign's OWN copy of the design, so editing a template later never
+  /// changes a campaign (and vice versa). Shape: src/lib/templates/document.ts
+  document   Json?
+  /// Template it was started from (for reference only).
+  templateId String?
+  /// Rendered at launch (merge tags still in place; filled per recipient).
+  html       String  @default("")
+  text       String  @default("")
+
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  /// Counters, updated by the worker (also derivable from CampaignRecipient).
+  recipientCount Int @default(0)
+  sentCount      Int @default(0)
+  failedCount    Int @default(0)
+  skippedCount   Int @default(0)
+
+  /// Why it was paused or failed, in plain English.
+  lastError   String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  recipients CampaignRecipient[]
+
+  @@index([workspaceId, createdAt])
+  @@index([status, scheduledAt])
+  @@map("campaign")
+}
+
+enum RecipientStatus {
+  PENDING // waiting to be sent
+  SENDING // claimed by the worker right now
+  SENT // the provider accepted it
+  FAILED // gave up (see lastError)
+  SKIPPED // not sent on purpose, e.g. unsubscribed after the campaign started
+}
+
+/// One row per (campaign, contact). The unique constraint is the
+/// "never send the same campaign twice to the same person" guarantee.
+model CampaignRecipient {
+  id                String          @id @default(cuid())
+  campaignId        String
+  campaign          Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId         String?
+  contact           Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  /// Copied at launch, so we know who it went to even if the contact is deleted later.
+  email             String
+  status            RecipientStatus @default(PENDING)
+  attempts          Int             @default(0)
+  /// When a retry is allowed (after a temporary failure).
+  nextAttemptAt     DateTime        @default(now())
+  /// When the worker claimed it (to detect a crash mid-send).
+  lockedAt          DateTime?
+  lastError         String?
+  providerMessageId String?
+  sentAt            DateTime?
+  /// Set when this person unsubscribed using this email's link.
+  unsubscribedAt    DateTime?
+  createdAt         DateTime        @default(now())
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId, status])
+  @@index([status, nextAttemptAt])
+  @@map("campaign_recipient")
+}
+
+/// How many emails a provider sent on a given UTC day, to respect `dailyLimit`.
+model ProviderDailyUsage {
+  providerId String
+  provider   SendingProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  /// UTC date, e.g. 2026-11-13.
+  day        DateTime        @db.Date
+  sent       Int             @default(0)
+
+  @@id([providerId, day])
+  @@map("provider_daily_usage")
 }
