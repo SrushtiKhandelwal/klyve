@@ -47,3 +47,6 @@ next-env.d.ts
 
 # prisma generated client
 /src/generated/
+
+# uploaded images (local media storage)
+/storage/

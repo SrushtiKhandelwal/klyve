@@ -28,6 +28,7 @@ const STEPS: Step[] = [
     icon: FileText,
     title: "Design a template",
     description: "Create a reusable email design with your logo and colours.",
+    href: "/templates",
   },
   {
     icon: Send,
