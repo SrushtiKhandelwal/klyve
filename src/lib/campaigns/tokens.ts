@@ -11,7 +11,11 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 // Changing either part makes verification fail. No database lookup is
 // needed to check the signature, and nothing extra is stored.
 
-export type TokenPurpose = "unsubscribe" | "view";
+/**
+ * "unsubscribe" → /u and /api/unsubscribe, "view" → /v (view in browser),
+ * "track" → /t/o (open pixel) and /t/c (tracked link clicks).
+ */
+export type TokenPurpose = "unsubscribe" | "view" | "track";
 
 function secret(purpose: TokenPurpose): Buffer {
   const base = process.env.ENCRYPTION_KEY || process.env.BETTER_AUTH_SECRET;

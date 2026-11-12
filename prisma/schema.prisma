@@ -309,6 +309,14 @@ model SendingProvider {
   maxPerSecond    Int            @default(5)
   /// Optional daily cap set by the user (null = no cap from our side).
   dailyLimit      Int?
+  /// Secret part of this provider's webhook URL (/api/webhooks/<id>/<token>),
+  /// where it reports bounces and spam complaints. Random, generated on demand.
+  webhookToken    String?        @unique
+  /// Optional signing secret the provider gives you, used to verify webhooks
+  /// (encrypted, like `credentials`). Shape depends on the provider.
+  webhookSecret   String?
+  /// When we last received a webhook from this provider (shows setup worked).
+  lastWebhookAt   DateTime?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -496,6 +504,16 @@ model Campaign {
   failedCount    Int @default(0)
   skippedCount   Int @default(0)
 
+  /// Phase 5 tracking switches (copied onto each send).
+  trackOpens       Boolean @default(true)
+  trackClicks      Boolean @default(true)
+  /// Unique-person engagement counters (each person counted once).
+  openCount        Int     @default(0)
+  clickCount       Int     @default(0)
+  bounceCount      Int     @default(0)
+  complaintCount   Int     @default(0)
+  unsubscribeCount Int     @default(0)
+
   /// Why it was paused or failed, in plain English.
   lastError   String?
   createdById String?
@@ -503,6 +521,8 @@ model Campaign {
   updatedAt   DateTime @updatedAt
 
   recipients CampaignRecipient[]
+  links      CampaignLink[]
+  events     EmailEvent[]
 
   @@index([workspaceId, createdAt])
   @@index([status, scheduledAt])
@@ -538,9 +558,24 @@ model CampaignRecipient {
   sentAt            DateTime?
   /// Set when this person unsubscribed using this email's link.
   unsubscribedAt    DateTime?
+  /// Phase 5 engagement (first time + totals). Opens by likely bots
+  /// (e.g. Apple Mail privacy prefetch) are counted separately.
+  firstOpenedAt     DateTime?
+  openCount         Int             @default(0)
+  firstClickedAt    DateTime?
+  clickCount        Int             @default(0)
+  /// The provider reported a delivery to the inbox server (webhooks only).
+  deliveredAt       DateTime?
+  bouncedAt         DateTime?
+  /// "hard" (address doesn't exist) or "soft" (temporary, e.g. mailbox full).
+  bounceType        String?
+  complainedAt      DateTime?
   createdAt         DateTime        @default(now())
 
+  events EmailEvent[]
+
   @@unique([campaignId, contactId])
+  @@index([providerMessageId])
   @@index([campaignId, status])
   @@index([status, nextAttemptAt])
   @@map("campaign_recipient")
@@ -556,4 +591,67 @@ model ProviderDailyUsage {
 
   @@id([providerId, day])
   @@map("provider_daily_usage")
+}
+
+// ─────────────────────────────────────────────
+// Phase 5: Tracking & reports
+// ─────────────────────────────────────────────
+
+/// A link in a sent campaign. Links are rewritten to /t/c/<token>/<position>
+/// so a click can be counted before redirecting to `url`.
+model CampaignLink {
+  id           String   @id @default(cuid())
+  campaignId   String
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  /// 0, 1, 2… in the order the links appear in the email.
+  position     Int
+  /// The real destination (http/https only; merge tags already resolved is NOT
+  /// possible here, so links containing {{ }} are not rewritten).
+  url          String
+  /// Total and unique-person clicks, for the "top links" report.
+  clickCount   Int      @default(0)
+  uniqueClicks Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  events EmailEvent[]
+
+  @@unique([campaignId, position])
+  @@map("campaign_link")
+}
+
+enum EmailEventType {
+  DELIVERED // provider says the inbox server accepted it (webhook)
+  OPENED // tracking pixel loaded
+  CLICKED // tracked link clicked
+  BOUNCED // provider says it bounced (webhook)
+  COMPLAINED // recipient marked it as spam (webhook)
+  UNSUBSCRIBED // used the unsubscribe link / one-click
+}
+
+/// One thing that happened to one sent email. Append-only; the counters on
+/// CampaignRecipient / Campaign / CampaignLink are kept in step for fast reports.
+model EmailEvent {
+  id          String            @id @default(cuid())
+  workspaceId String
+  campaignId  String
+  campaign    Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   CampaignRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  type        EmailEventType
+  linkId      String?
+  link        CampaignLink?     @relation(fields: [linkId], references: [id], onDelete: SetNull)
+  /// true when it looks automated (security scanners, Apple privacy prefetch…).
+  isBot       Boolean           @default(false)
+  /// Short browser/app description, for the report (never the full string).
+  userAgent   String?
+  /// SHA-256 of the IP + a server secret: lets us spot duplicates without storing IPs.
+  ipHash      String?
+  /// Extra detail, e.g. { "bounceType": "hard", "diagnostic": "550 user unknown" }.
+  detail      Json?
+  createdAt   DateTime          @default(now())
+
+  @@index([campaignId, type, createdAt])
+  @@index([recipientId, type])
+  @@index([workspaceId, createdAt])
+  @@map("email_event")
 }
