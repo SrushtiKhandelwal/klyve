@@ -107,6 +107,10 @@ model Workspace {
   senders          Sender[]
   sendingDomains   SendingDomain[]
 
+  templates   EmailTemplate[]
+  brandKit    BrandKit?
+  mediaAssets MediaAsset[]
+
   @@map("workspace")
 }
 
@@ -355,4 +359,75 @@ model SendingDomain {
 
   @@unique([workspaceId, domain])
   @@map("sending_domain")
+}
+
+// ─────────────────────────────────────────────
+// Phase 3: Templates & editor
+// ─────────────────────────────────────────────
+
+/// A reusable email design. `document` is the editor's JSON (src/lib/templates/document.ts);
+/// `html`/`text` are the rendered output, refreshed on every save.
+model EmailTemplate {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  /// Default subject + preview text for campaigns using this template.
+  subject     String    @default("")
+  preheader   String    @default("")
+  /// Which starter template it was created from (e.g. "welcome"), if any.
+  starterId   String?
+  document    Json
+  /// Rendered email HTML with {{ merge tags }} still in place (filled per contact at send time).
+  html        String    @default("")
+  text        String    @default("")
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId, updatedAt])
+  @@map("email_template")
+}
+
+/// The workspace's look: applied to new templates and starter templates.
+model BrandKit {
+  id             String    @id @default(cuid())
+  workspaceId    String    @unique
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  companyName    String    @default("")
+  /// Public URL of the logo (usually a MediaAsset URL).
+  logoUrl        String?
+  primaryColor   String    @default("#059669")
+  secondaryColor String    @default("#0f172a")
+  backgroundColor String   @default("#f4f4f5")
+  textColor      String    @default("#27272a")
+  fontFamily     String    @default("Arial, Helvetica, sans-serif")
+  /// Postal address: anti-spam laws (CAN-SPAM, etc.) require it in marketing email footers.
+  address        String    @default("")
+  websiteUrl     String?
+  /// e.g. { "instagram": "https://instagram.com/acme", "x": "..." }
+  socialLinks    Json      @default("{}")
+  updatedAt      DateTime  @updatedAt
+
+  @@map("brand_kit")
+}
+
+/// An uploaded image (logo, email picture). Served publicly at /media/<id>
+/// because email clients must be able to load it without logging in.
+model MediaAsset {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  width       Int?
+  height      Int?
+  /// Where the bytes live, e.g. "local:<workspaceId>/<id>.png" (S3/R2 later).
+  storageKey  String    @unique
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@map("media_asset")
 }
