@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { loadTemplateThumbnails } from "@/app/actions/templates";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +54,13 @@ export function EmailThumbnail({
       className={cn("relative aspect-[4/5] w-full overflow-hidden bg-zinc-100", className)}
       aria-hidden="true"
     >
-      {(!ready || !loaded) && <div className="absolute inset-0 animate-pulse bg-zinc-100" />}
+      {(!ready || !loaded) && (
+        // A clear "still loading" state, so an unfinished card never looks broken.
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-100 text-zinc-400">
+          <Loader2 className="size-6 animate-spin" />
+          <span className="text-xs font-medium">Loading preview…</span>
+        </div>
+      )}
       {ready && scale > 0 && (
         <iframe
           title={title}

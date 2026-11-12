@@ -4,7 +4,10 @@ import { Prisma } from "@/generated/prisma/client";
 import { getBrandTheme } from "@/lib/brand-kit";
 import { db } from "@/lib/db";
 import { emailDocumentSchema, emptyDocument, type EmailDocument } from "@/lib/templates/document";
+import { getAttributeDefinitions } from "@/lib/contacts/lookups";
+import { personalize } from "@/lib/templates/personalize";
 import { renderDocument } from "@/lib/templates/render";
+import { previewMergeData } from "@/lib/templates/sample-data";
 import { buildStarter, getStarterMeta } from "@/lib/templates/starters";
 
 // Data Access Layer for email templates.
@@ -162,11 +165,25 @@ export async function getTemplate(workspaceId: string, templateId: string): Prom
 export async function getTemplateThumbnails(workspaceId: string, templateIds: string[]): Promise<Record<string, string>> {
   const ids = [...new Set(templateIds.filter((id) => typeof id === "string" && id.length > 0 && id.length < 50))].slice(0, 24);
   if (ids.length === 0) return {};
-  const rows = await db.emailTemplate.findMany({
-    where: { workspaceId, id: { in: ids } },
-    select: { id: true, html: true },
-  });
-  return Object.fromEntries(rows.map((r) => [r.id, r.html]));
+  const [rows, attributes] = await Promise.all([
+    db.emailTemplate.findMany({
+      where: { workspaceId, id: { in: ids } },
+      select: { id: true, html: true, text: true, subject: true },
+    }),
+    getAttributeDefinitions(workspaceId),
+  ]);
+  // Show thumbnails with the sample contact filled in ("Hi Priya"), not raw
+  // {{ merge tags }}. A template with a broken tag still shows its raw HTML.
+  const sample = previewMergeData(attributes);
+  return Object.fromEntries(
+    rows.map((r) => {
+      try {
+        return [r.id, personalize({ html: r.html, text: r.text, subject: r.subject }, sample).html];
+      } catch {
+        return [r.id, r.html];
+      }
+    }),
+  );
 }
 
 // ── Writing ─────────────────────────────────────────────────────────────────

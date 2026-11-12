@@ -1,7 +1,9 @@
 import "server-only";
 import { cacheLife } from "next/cache";
 import type { BrandTheme } from "@/lib/templates/document";
+import { personalize } from "@/lib/templates/personalize";
 import { renderDocument } from "@/lib/templates/render";
+import { previewMergeData } from "@/lib/templates/sample-data";
 import { buildStarter, getStarterMeta } from "@/lib/templates/starters";
 
 /**
@@ -24,6 +26,19 @@ export async function renderStarterPreview(starterId: string, theme: BrandTheme)
   const meta = getStarterMeta(starterId);
   const document = meta ? buildStarter(meta.id, theme) : null;
   if (!meta || !document) return null;
-  const { html } = await renderDocument(document, { subject: meta.subject, preheader: meta.preheader });
-  return html;
+  const rendered = await renderDocument(document, { subject: meta.subject, preheader: meta.preheader });
+  return withSampleData(rendered.html, rendered.text, meta.subject);
+}
+
+/**
+ * Fills the merge tags with the sample contact ("Welcome, Priya!"), so a
+ * thumbnail looks like a real email instead of showing {{ contact.FIRSTNAME }}.
+ * If a tag can't be filled for some reason, the raw HTML is still shown.
+ */
+function withSampleData(html: string, text: string, subject: string): string {
+  try {
+    return personalize({ html, text, subject }, previewMergeData([])).html;
+  } catch {
+    return html;
+  }
 }
