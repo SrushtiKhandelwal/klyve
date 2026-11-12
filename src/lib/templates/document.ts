@@ -274,6 +274,7 @@ export const BUILTIN_MERGE_TAGS: MergeTag[] = [
   { tag: "{{ contact.LASTNAME }}", label: "Last name", example: "Sharma" },
   { tag: "{{ contact.EMAIL }}", label: "Email", example: "priya@example.com" },
   { tag: "{{ unsubscribe_url }}", label: "Unsubscribe link", example: "https://…/unsubscribe/…" },
+  { tag: "{{ view_in_browser_url }}", label: "View in browser link", example: "https://…/v/…" },
   { tag: "{{ current_year }}", label: "Current year", example: String(new Date().getFullYear()) },
 ];
 

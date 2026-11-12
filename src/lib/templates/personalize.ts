@@ -91,10 +91,15 @@ function engines(): Personalizer {
 
 // ── Merge data ───────────────────────────────────────────────────────────────
 
-/** What a template can use: {{ contact.X }}, {{ unsubscribe_url }}, {{ current_year }}, {{ workspace.name }}. */
+/**
+ * What a template can use: {{ contact.X }}, {{ unsubscribe_url }},
+ * {{ view_in_browser_url }}, {{ current_year }}, {{ workspace.name }}.
+ */
 export type MergeData = {
   contact: Record<string, AttributeValue>;
   unsubscribe_url: string;
+  /** Link to this email on the web (/v/<token>). Empty in previews/tests. */
+  view_in_browser_url: string;
   current_year: number;
   workspace: { name: string };
 };
@@ -109,6 +114,7 @@ export type MergeContact = {
 
 export type MergeExtras = {
   unsubscribeUrl?: string;
+  viewInBrowserUrl?: string;
   workspaceName?: string;
   /** For tests; defaults to now. */
   now?: Date;
@@ -136,6 +142,7 @@ export function buildMergeData(contact: MergeContact, extras: MergeExtras = {}):
   return {
     contact: { ...fields, ...builtin },
     unsubscribe_url: extras.unsubscribeUrl ?? "",
+    view_in_browser_url: extras.viewInBrowserUrl ?? "",
     current_year: (extras.now ?? new Date()).getUTCFullYear(),
     workspace: { name: extras.workspaceName ?? "" },
   };
@@ -289,7 +296,7 @@ export function personalize(template: EmailParts, data: MergeData): EmailParts {
 
 // ── Checking merge tags before saving ────────────────────────────────────────
 
-const KNOWN_ROOTS = new Set(["contact", "unsubscribe_url", "current_year", "workspace"]);
+const KNOWN_ROOTS = new Set(["contact", "unsubscribe_url", "view_in_browser_url", "current_year", "workspace"]);
 const BUILTIN_KEYS = new Set<string>(BUILTIN_FIELDS.map((f) => f.key));
 
 /**
