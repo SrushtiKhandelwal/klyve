@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Megaphone } from "lucide-react";
+import { rowRates } from "@/components/campaigns/rates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CAMPAIGN_STATUS_META, type CampaignStatusValue } from "@/lib/campaigns/status";
 import { db } from "@/lib/db";
@@ -25,6 +26,13 @@ type Row = {
   scheduledAt: Date | null;
   startedAt: Date | null;
   finishedAt: Date | null;
+  trackOpens: boolean;
+  trackClicks: boolean;
+  openCount: number;
+  clickCount: number;
+  bounceCount: number;
+  complaintCount: number;
+  unsubscribeCount: number;
 };
 
 /** The most meaningful date for the campaign's state, e.g. "Sent 12 Nov 2026". */
@@ -52,6 +60,13 @@ export async function RecentCampaigns() {
       scheduledAt: true,
       startedAt: true,
       finishedAt: true,
+      trackOpens: true,
+      trackClicks: true,
+      openCount: true,
+      clickCount: true,
+      bounceCount: true,
+      complaintCount: true,
+      unsubscribeCount: true,
     },
   });
 
@@ -76,6 +91,9 @@ export async function RecentCampaigns() {
         const meta = CAMPAIGN_STATUS_META[c.status] ?? CAMPAIGN_STATUS_META.DRAFT;
         // Drafts have no recipients yet, so a "0 / 0" would only confuse.
         const showCounts = c.status !== "DRAFT" && c.recipientCount > 0;
+        // Same maths as the campaign report; "—" when not sent yet or not tracked.
+        const rates = rowRates(c);
+        const showRates = showCounts && c.sentCount > 0;
         return (
           <li key={c.id} className="relative flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3.5 hover:bg-zinc-50 sm:flex-nowrap">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -91,6 +109,16 @@ export async function RecentCampaigns() {
             {showCounts && (
               <span className="text-sm text-zinc-600 tabular-nums">
                 {numberFormat.format(c.sentCount)} / {numberFormat.format(c.recipientCount)} sent
+              </span>
+            )}
+            {showRates && (
+              <span className="flex gap-3 text-sm text-zinc-600 tabular-nums">
+                <span title={rates.openTitle}>
+                  <span className="font-medium text-zinc-900">{rates.open}</span> opens
+                </span>
+                <span title={rates.clickTitle}>
+                  <span className="font-medium text-zinc-900">{rates.click}</span> clicks
+                </span>
               </span>
             )}
             <span

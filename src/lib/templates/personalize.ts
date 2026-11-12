@@ -296,7 +296,8 @@ export function personalize(template: EmailParts, data: MergeData): EmailParts {
 
 // ── Checking merge tags before saving ────────────────────────────────────────
 
-const KNOWN_ROOTS = new Set(["contact", "unsubscribe_url", "view_in_browser_url", "current_year", "workspace"]);
+// "tracking" is filled by the sender (open pixel / click links), never typed by users.
+const KNOWN_ROOTS = new Set(["contact", "unsubscribe_url", "view_in_browser_url", "current_year", "workspace", "tracking"]);
 const BUILTIN_KEYS = new Set<string>(BUILTIN_FIELDS.map((f) => f.key));
 
 /**

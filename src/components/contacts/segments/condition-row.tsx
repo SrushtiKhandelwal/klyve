@@ -13,17 +13,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CONTACT_STATUSES, CONTACT_STATUS_META } from "@/lib/contacts/common";
-import { OPERATOR_LABELS, type SegmentOperator } from "@/lib/segments/rules";
+import {
+  ENGAGEMENT_OPERATOR_HINTS,
+  MAX_ENGAGEMENT_DAYS,
+  OPERATOR_LABELS,
+  type SegmentOperator,
+} from "@/lib/segments/rules";
 import { cn } from "@/lib/utils";
 import {
+  DEFAULT_ENGAGEMENT_DAYS,
   operatorsFor,
   valueInputKind,
+  type CampaignOption,
   type DraftCondition,
   type FieldOption,
   type ListOption,
 } from "./draft";
 
-const GROUPS = ["Contact", "Lists", "Custom fields"] as const;
+const GROUPS = ["Contact", "Lists", "Email activity", "Custom fields"] as const;
+
+const sentDateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 /** One "field / operator / value" row in the rule builder. */
 export function ConditionRow({
@@ -31,6 +40,7 @@ export function ConditionRow({
   draft,
   fieldOptions,
   lists,
+  campaigns,
   problem,
   onChange,
   onRemove,
@@ -39,6 +49,8 @@ export function ConditionRow({
   draft: DraftCondition;
   fieldOptions: FieldOption[];
   lists: ListOption[];
+  /** Sent campaigns, newest first, for "opened campaign X". */
+  campaigns: CampaignOption[];
   /** Why this row isn't usable yet, e.g. "Enter a value." */
   problem: string | null;
   onChange: (next: DraftCondition) => void;
@@ -49,6 +61,12 @@ export function ConditionRow({
   const operators = option.missing ? [draft.operator] : operatorsFor(option);
   const inputKind = valueInputKind(option.kind, draft.operator);
   const label = `Condition ${index + 1}`;
+  const isEngagement = option.kind === "ENGAGEMENT";
+  const hint = isEngagement ? ENGAGEMENT_OPERATOR_HINTS[draft.operator] : undefined;
+  // A saved condition may point at a campaign that's no longer in the picker.
+  const campaignItems = campaigns.some((c) => c.id === draft.campaignId) || !draft.campaignId
+    ? campaigns
+    : [{ id: draft.campaignId, name: "Unknown campaign", sentAt: null }, ...campaigns];
 
   function changeField(fieldId: string) {
     const next = fieldOptions.find((o) => o.id === fieldId);
@@ -56,20 +74,22 @@ export function ConditionRow({
     const nextOps = operatorsFor(next);
     // Keep the operator and typed value when they still make sense.
     const operator = nextOps.includes(draft.operator) ? draft.operator : nextOps[0];
-    const sameInput = next.kind === option.kind && valueInputKind(next.kind, operator) === inputKind;
+    const nextInput = valueInputKind(next.kind, operator);
+    const sameInput = next.kind === option.kind && nextInput === inputKind;
     onChange({
       ...draft,
       fieldId,
       operator,
-      text: sameInput ? draft.text : "",
+      text: sameInput ? draft.text : startingText(next, nextInput),
       statuses: next.kind === "STATUS" && draft.statuses.length === 0 ? ["SUBSCRIBED"] : draft.statuses,
     });
   }
 
   function changeOperator(operator: SegmentOperator) {
     // "is before" needs a date but "in the last" needs a number: clear the box if it changes.
-    const sameInput = valueInputKind(option.kind, operator) === inputKind;
-    onChange({ ...draft, operator, text: sameInput ? draft.text : "" });
+    const nextInput = valueInputKind(option.kind, operator);
+    const sameInput = nextInput === inputKind;
+    onChange({ ...draft, operator, text: sameInput ? draft.text : startingText(option, nextInput) });
   }
 
   function toggleStatus(status: string) {
@@ -163,7 +183,7 @@ export function ConditionRow({
               <Input
                 type="number"
                 min={1}
-                max={36500}
+                max={isEngagement ? MAX_ENGAGEMENT_DAYS : 36500}
                 step={1}
                 inputMode="numeric"
                 value={draft.text}
@@ -218,6 +238,32 @@ export function ConditionRow({
                 </SelectContent>
               </Select>
             ))}
+          {inputKind === "campaign" &&
+            (campaignItems.length === 0 ? (
+              <p className="py-1.5 text-sm text-zinc-500">You haven&apos;t sent any campaigns yet.</p>
+            ) : (
+              <Select
+                items={campaignItems.map((c) => ({ value: c.id, label: c.name }))}
+                value={draft.campaignId || null}
+                onValueChange={(v) => onChange({ ...draft, campaignId: v ?? "" })}
+              >
+                <SelectTrigger className="w-full" aria-label={`${label} campaign`}>
+                  <SelectValue placeholder="Pick a campaign" className="truncate" />
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>
+                  {campaignItems.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <span className="min-w-0 truncate">{c.name}</span>
+                      {c.sentAt && (
+                        <span className="ml-auto shrink-0 text-xs text-zinc-500">
+                          {sentDateFormat.format(new Date(c.sentAt))}
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ))}
         </div>
 
         <Button
@@ -232,7 +278,13 @@ export function ConditionRow({
           <XIcon />
         </Button>
       </div>
+      {hint && !problem && <p className="mt-2 text-xs text-zinc-500">{hint}</p>}
       {problem && <p className="mt-2 text-xs text-amber-700">{problem}</p>}
     </div>
   );
+}
+
+/** What a freshly shown value box starts with: 30 days for email activity, else empty. */
+function startingText(option: FieldOption, input: ReturnType<typeof valueInputKind>): string {
+  return option.kind === "ENGAGEMENT" && input === "days" ? DEFAULT_ENGAGEMENT_DAYS : "";
 }

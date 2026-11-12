@@ -9,7 +9,7 @@ import {
 } from "@/components/contacts/segments/segment-contacts-table";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { getAttributeDefinitions, getListOptions } from "@/lib/contacts/lookups";
-import { getSegment } from "@/lib/segments/queries";
+import { getSegment, listSegmentCampaignOptions } from "@/lib/segments/queries";
 import { requireActiveWorkspace } from "@/lib/workspace";
 import { BackToSegments } from "../back-link";
 
@@ -30,10 +30,11 @@ export default function EditSegmentPage({ params }: { params: Promise<{ segmentI
 async function EditSegment({ params }: { params: Promise<{ segmentId: string }> }) {
   const { segmentId } = await params;
   const ws = await requireActiveWorkspace();
-  const [segment, attributes, lists] = await Promise.all([
+  const [segment, attributes, lists, campaigns] = await Promise.all([
     getSegment(ws.id, segmentId),
     getAttributeDefinitions(ws.id),
     getListOptions(ws.id),
+    listSegmentCampaignOptions(ws.id),
   ]);
 
   // Unknown id, or a segment from another workspace: both are "not found".
@@ -48,6 +49,7 @@ async function EditSegment({ params }: { params: Promise<{ segmentId: string }> 
         segment={{ id: segment.id, name: segment.name, rules: segment.rules }}
         attributes={attributes}
         lists={lists}
+        campaigns={campaigns}
       />
       <Suspense fallback={<SegmentContactsTableSkeleton />}>
         <SegmentContactsTable workspaceId={ws.id} rules={segment.rules} />

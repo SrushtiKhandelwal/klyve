@@ -4,6 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PageContainer } from "@/components/dashboard/page-header";
+import {
+  ContactActivityCard,
+  ContactActivityCardSkeleton,
+} from "@/components/contacts/activity/contact-activity-card";
 import { ContactDeleteButton } from "@/components/contacts/contact-delete-button";
 import { ContactEditForm } from "@/components/contacts/contact-edit-form";
 import { ContactListsCard } from "@/components/contacts/contact-lists-card";
@@ -104,6 +108,13 @@ async function ContactDetails({ params }: { params: Params }) {
               memberOf={contact.lists.map((l) => ({ id: l.id, name: l.name }))}
               allLists={lists}
             />
+          </Card>
+
+          <Card title="Email activity">
+            {/* Streams in on its own, so the rest of the page doesn't wait for it. */}
+            <Suspense fallback={<ContactActivityCardSkeleton />}>
+              <ContactActivityCard workspaceId={ws.id} contactId={contact.id} />
+            </Suspense>
           </Card>
         </div>
 

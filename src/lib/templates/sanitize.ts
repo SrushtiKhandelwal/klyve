@@ -25,10 +25,16 @@ const WHOLE_MERGE_TAG = /^\{\{\s*[a-z_][a-z0-9_.]*\s*\}\}$/i;
 export function isSafeLink(href: string): boolean {
   const v = href.trim();
   if (v === "" || v.length > 2000) return false;
-  // Control characters and whitespace inside a URL are a classic way to
-  // sneak "java\tscript:" past filters. Real links never contain them.
-  if (/[\u0000-\u001f\u007f\s]/.test(v)) return WHOLE_MERGE_TAG.test(v);
-  return /^(https?:\/\/|mailto:|tel:)/i.test(v) || WHOLE_MERGE_TAG.test(v);
+  if (WHOLE_MERGE_TAG.test(v)) return true;
+  // Control characters (tabs, newlines…) are a classic way to sneak
+  // "java\tscript:" past filters. Real links never contain them.
+  if (/[\u0000-\u001f\u007f]/.test(v)) return false;
+  // Merge tags may sit INSIDE a link, e.g. https://shop.example/?e={{ contact.EMAIL }}.
+  // Their spaces are fine, so check the link with the tags taken out: the rest
+  // must have no whitespace and must start with a safe scheme.
+  const withoutTags = v.replace(/\{\{[^{}]*\}\}/g, "x");
+  if (/\s/.test(withoutTags)) return false;
+  return /^(https?:\/\/|mailto:|tel:)/i.test(withoutTags);
 }
 
 /** Tags whose value WE create (never contact data), so they need no URL check. */

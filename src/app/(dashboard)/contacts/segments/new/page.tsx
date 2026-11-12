@@ -4,6 +4,7 @@ import { SegmentBuilder } from "@/components/contacts/segments/segment-builder";
 import { SegmentBuilderSkeleton } from "@/components/contacts/segments/segment-builder-skeleton";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { getAttributeDefinitions, getListOptions } from "@/lib/contacts/lookups";
+import { listSegmentCampaignOptions } from "@/lib/segments/queries";
 import { requireActiveWorkspace } from "@/lib/workspace";
 import { BackToSegments } from "../back-link";
 
@@ -28,6 +29,10 @@ export default function NewSegmentPage() {
 
 async function NewSegmentBuilder() {
   const ws = await requireActiveWorkspace();
-  const [attributes, lists] = await Promise.all([getAttributeDefinitions(ws.id), getListOptions(ws.id)]);
-  return <SegmentBuilder attributes={attributes} lists={lists} />;
+  const [attributes, lists, campaigns] = await Promise.all([
+    getAttributeDefinitions(ws.id),
+    getListOptions(ws.id),
+    listSegmentCampaignOptions(ws.id),
+  ]);
+  return <SegmentBuilder attributes={attributes} lists={lists} campaigns={campaigns} />;
 }

@@ -32,6 +32,7 @@ import {
   type AudienceCount,
 } from "@/lib/campaigns/resolve-audience";
 import { getListsWithCounts } from "@/lib/contacts/lists";
+import { getCampaignReport, type CampaignReport } from "@/lib/tracking/reports";
 import { getVerifiedSenders } from "@/lib/email/senders";
 import { listSegments } from "@/lib/segments/queries";
 import { listTemplates } from "@/lib/templates/queries";
@@ -103,6 +104,9 @@ const PatchSchema = z
     audience: audienceSchema,
     // The design is checked in full by updateCampaignDraft (validateDocument).
     document: z.unknown(),
+    // Phase 5 tracking switches (DRAFT only, like every field here).
+    trackOpens: z.boolean(),
+    trackClicks: z.boolean(),
   })
   .partial()
   .strict();
@@ -267,6 +271,8 @@ export async function getCampaignProgressAction(campaignId: unknown): Promise<Ac
 
 const RecipientsQuerySchema = z.object({
   status: z.string().max(20).optional(),
+  // "opened", "clicked", "not_opened", "bounced", "complained", "unsubscribed" (anything else is ignored).
+  engagement: z.string().max(20).optional(),
   q: z.string().max(200).optional(),
   page: z.coerce.number().int().min(1).max(1_000_000).optional(),
 });
@@ -283,6 +289,22 @@ export async function listCampaignRecipientsAction(
     return { ok: true, page: await listCampaignRecipients(ws.id, id.data, parsed.data) };
   } catch (error) {
     return fail("listCampaignRecipientsAction", error);
+  }
+}
+
+/**
+ * The campaign report (opens, clicks, bounces, timeline, top links), for the
+ * status page's refresh. Read-only, and scoped to the active workspace.
+ */
+export async function getCampaignReportAction(campaignId: unknown): Promise<ActionResult<{ report: CampaignReport }>> {
+  const ws = await requireActiveWorkspace();
+  const id = idSchema.safeParse(campaignId);
+  if (!id.success) return { ok: false, error: INVALID };
+  try {
+    const report = await getCampaignReport(ws.id, id.data);
+    return report ? { ok: true, report } : { ok: false, error: "This campaign doesn't exist (or was deleted)." };
+  } catch (error) {
+    return fail("getCampaignReportAction", error);
   }
 }
 

@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { BarChart3 } from "lucide-react";
 import { SentDesignPreview } from "@/components/campaigns/design-preview";
 import { LocalDateTime } from "@/components/campaigns/local-time";
 import type { EmailDocument } from "@/lib/templates/document";
@@ -75,10 +74,6 @@ export function CampaignSummary({
           <SentDesignPreview document={document} subject={subject} preheader={preheader} />
         </div>
       </div>
-      <p className="flex items-start gap-2 rounded-lg bg-zinc-50 px-3 py-2.5 text-xs text-zinc-500">
-        <BarChart3 className="mt-px size-4 shrink-0 text-zinc-400" aria-hidden />
-        Opens &amp; clicks are coming soon. For now you can see who it was sent to, and any failures, above.
-      </p>
     </section>
   );
 }

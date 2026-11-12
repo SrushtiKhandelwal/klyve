@@ -94,9 +94,28 @@ export type CampaignListItem = {
   sentCount: number;
   failedCount: number;
   skippedCount: number;
+  /** Phase 5: were opens/clicks tracked, and the unique-person engagement counters. */
+  trackOpens: boolean;
+  trackClicks: boolean;
+  openCount: number;
+  clickCount: number;
+  bounceCount: number;
+  complaintCount: number;
+  unsubscribeCount: number;
   /** e.g. "Acme News <news@acme.com>", or null if no sender is picked. */
   senderLabel: string | null;
 };
+
+/** The tracking switches + engagement counters (for the open/click rate columns). */
+const ENGAGEMENT_SELECT = {
+  trackOpens: true,
+  trackClicks: true,
+  openCount: true,
+  clickCount: true,
+  bounceCount: true,
+  complaintCount: true,
+  unsubscribeCount: true,
+} as const;
 
 const senderLabel = (s: { name: string; email: string } | null) => (s ? `${s.name} <${s.email}>` : null);
 
@@ -128,6 +147,7 @@ export async function listCampaigns(
       sentCount: true,
       failedCount: true,
       skippedCount: true,
+      ...ENGAGEMENT_SELECT,
       sender: { select: { name: true, email: true } },
     },
   });
@@ -176,6 +196,7 @@ export async function getCampaign(workspaceId: string, campaignId: string): Prom
       sentCount: true,
       failedCount: true,
       skippedCount: true,
+      ...ENGAGEMENT_SELECT,
       lastError: true,
       createdById: true,
       // The relation filters are a second safety net: only same-workspace rows.
@@ -281,6 +302,9 @@ export type DraftPatch = {
   senderId?: unknown;
   audience?: unknown;
   document?: unknown;
+  /** Phase 5 tracking switches (booleans). */
+  trackOpens?: unknown;
+  trackClicks?: unknown;
 };
 
 export type UpdateResult = { ok: true } | { ok: false; error: string };
@@ -329,6 +353,14 @@ export async function updateCampaignDraft(workspaceId: string, campaignId: strin
     if (!checked.ok) return checked;
     data.document = checked.document as Prisma.InputJsonValue;
   }
+  if (patch.trackOpens !== undefined) {
+    if (typeof patch.trackOpens !== "boolean") return { ok: false, error: "Open tracking must be on or off." };
+    data.trackOpens = patch.trackOpens;
+  }
+  if (patch.trackClicks !== undefined) {
+    if (typeof patch.trackClicks !== "boolean") return { ok: false, error: "Click tracking must be on or off." };
+    data.trackClicks = patch.trackClicks;
+  }
   if (Object.keys(data).length === 0) return { ok: true };
 
   // Only a DRAFT can change: the status is part of the WHERE, so a campaign
@@ -372,7 +404,17 @@ export async function duplicateCampaign(workspaceId: string, userId: string, cam
   const source = id
     ? await db.campaign.findFirst({
         where: { id, workspaceId },
-        select: { name: true, subject: true, preheader: true, senderId: true, audience: true, document: true, templateId: true },
+        select: {
+          name: true,
+          subject: true,
+          preheader: true,
+          senderId: true,
+          audience: true,
+          document: true,
+          templateId: true,
+          trackOpens: true,
+          trackClicks: true,
+        },
       })
     : null;
   if (!source) throw new CampaignError(NOT_FOUND);
@@ -396,6 +438,9 @@ export async function duplicateCampaign(workspaceId: string, userId: string, cam
       audience: readAudience(source.audience) as Prisma.InputJsonValue,
       document: parsedDoc?.success ? (withFreshIds(parsedDoc.data) as Prisma.InputJsonValue) : Prisma.JsonNull,
       templateId: source.templateId,
+      // Keep the tracking choice: someone who turned tracking off wants it off in the copy too.
+      trackOpens: source.trackOpens,
+      trackClicks: source.trackClicks,
       createdById: userId,
     },
     select: { id: true },
@@ -480,15 +525,48 @@ export type RecipientRow = {
   attempts: number;
   lastError: string | null;
   sentAt: Date | null;
+  /** Phase 5 engagement (null/0 = didn't happen, or wasn't tracked). */
+  firstOpenedAt: Date | null;
+  openCount: number;
+  firstClickedAt: Date | null;
+  clickCount: number;
+  /** Set for a HARD bounce (the address doesn't exist). */
+  bouncedAt: Date | null;
+  bounceType: string | null;
+  /** Only temporary bounces (mailbox full…): stored as events, not on the row. */
+  softBounced: boolean;
+  complainedAt: Date | null;
+  unsubscribedAt: Date | null;
 };
 
 export type RecipientsPage = { rows: RecipientRow[]; total: number; page: number; pageCount: number };
 
-/** One page (50) of a campaign's recipients, optionally filtered by status / email search. */
+/** The engagement filter chips on the status page (one at a time). */
+export const ENGAGEMENT_FILTERS = ["opened", "clicked", "not_opened", "bounced", "complained", "unsubscribed"] as const;
+export type EngagementFilter = (typeof ENGAGEMENT_FILTERS)[number];
+
+const isEngagementFilter = (v: unknown): v is EngagementFilter => (ENGAGEMENT_FILTERS as readonly unknown[]).includes(v);
+
+/** What each engagement chip means, as a database filter. */
+const ENGAGEMENT_WHERE: Record<EngagementFilter, Prisma.CampaignRecipientWhereInput> = {
+  opened: { firstOpenedAt: { not: null } },
+  clicked: { firstClickedAt: { not: null } },
+  // "Didn't open" only makes sense for emails that actually went out.
+  not_opened: { status: "SENT", firstOpenedAt: null },
+  // Hard bounces are on the row; soft ones only exist as events (index: recipientId, type).
+  bounced: { OR: [{ bouncedAt: { not: null } }, { events: { some: { type: "BOUNCED" } } }] },
+  complained: { complainedAt: { not: null } },
+  unsubscribed: { unsubscribedAt: { not: null } },
+};
+
+/**
+ * One page (50) of a campaign's recipients, optionally filtered by status OR
+ * engagement (opened, clicked, …) and by an email search.
+ */
 export async function listCampaignRecipients(
   workspaceId: string,
   campaignId: string,
-  options: { status?: string; q?: string; page?: number } = {},
+  options: { status?: string; engagement?: string; q?: string; page?: number } = {},
 ): Promise<RecipientsPage> {
   const empty: RecipientsPage = { rows: [], total: 0, page: 1, pageCount: 1 };
   const id = cleanId(campaignId);
@@ -499,6 +577,7 @@ export async function listCampaignRecipients(
   const where: Prisma.CampaignRecipientWhereInput = {
     campaignId: campaign.id,
     ...(isRecipientStatus(options.status) ? { status: options.status } : {}),
+    ...(isEngagementFilter(options.engagement) ? ENGAGEMENT_WHERE[options.engagement] : {}),
     ...(q ? { email: { contains: q, mode: "insensitive" } } : {}),
   };
   const size = CAMPAIGN_LIMITS.recipientsPageSize;
@@ -511,7 +590,28 @@ export async function listCampaignRecipients(
     orderBy: [{ email: "asc" }, { id: "asc" }],
     skip: (page - 1) * size,
     take: size,
-    select: { id: true, email: true, status: true, attempts: true, lastError: true, sentAt: true },
+    select: {
+      id: true,
+      email: true,
+      status: true,
+      attempts: true,
+      lastError: true,
+      sentAt: true,
+      firstOpenedAt: true,
+      openCount: true,
+      firstClickedAt: true,
+      clickCount: true,
+      bouncedAt: true,
+      bounceType: true,
+      complainedAt: true,
+      unsubscribedAt: true,
+      _count: { select: { events: { where: { type: "BOUNCED" } } } },
+    },
   });
-  return { rows, total, page, pageCount };
+  return {
+    rows: rows.map(({ _count, ...row }) => ({ ...row, softBounced: !row.bouncedAt && _count.events > 0 })),
+    total,
+    page,
+    pageCount,
+  };
 }

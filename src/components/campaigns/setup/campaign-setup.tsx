@@ -36,6 +36,9 @@ export type DraftCampaignView = {
   audience: Audience;
   senderId: string | null;
   document: EmailDocument | null;
+  /** Phase 5 tracking switches (both on by default). */
+  trackOpens: boolean;
+  trackClicks: boolean;
   canDelete: boolean;
 };
 
@@ -72,6 +75,7 @@ export function CampaignSetup({
   const [subject, setSubject] = useState(campaign.subject);
   const [preheader, setPreheader] = useState(campaign.preheader);
   const [testOpen, setTestOpen] = useState(false);
+  const [tracking, setTracking] = useState({ trackOpens: campaign.trackOpens, trackClicks: campaign.trackClicks });
 
   const count = useAudienceCount(audience, initialRecipientCount);
   const sender = senders.find((s) => s.id === senderId) ?? null;
@@ -284,6 +288,11 @@ export function CampaignSetup({
           savedVersion={savedVersion}
           flush={flush}
           onFixSection={openSection}
+          tracking={tracking}
+          onTrackingChange={(patch) => {
+            setTracking((t) => ({ ...t, ...patch }));
+            save(patch, 0);
+          }}
         />
       </div>
 

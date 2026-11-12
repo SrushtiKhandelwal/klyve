@@ -24,23 +24,30 @@ import { useNow } from "@/components/settings/senders/use-now";
 import { cn } from "@/lib/utils";
 import { CampaignStatusActions } from "./status-actions";
 import { LIVE_STATUSES, toProgressView, type ProgressView } from "./progress";
+import { CampaignReportSection } from "./campaign-report";
 import { RecipientsTable } from "./recipients-table";
+import { useLiveReport } from "./use-live-report";
+import type { CampaignReport } from "@/lib/tracking/reports";
 
 /** How often to ask the server for fresh numbers while the campaign is live. */
 const POLL_MS = 3000;
 
 /**
  * The page of a campaign that's scheduled, sending or finished: a big status
- * header with live progress, the actions that make sense right now, and the
- * list of recipients. `children` is the server-rendered summary underneath.
+ * header with live progress, the actions that make sense right now, the
+ * report (opens, clicks, bounces…) and the list of recipients. `children` is
+ * the server-rendered summary underneath.
  */
 export function CampaignStatusView({
   campaign,
   initialProgress,
+  initialReport,
   children,
 }: {
   campaign: { id: string; name: string; scheduledAt: string | null; canDelete: boolean };
   initialProgress: ProgressView;
+  /** The report as the server first rendered it (null for a campaign that hasn't started). */
+  initialReport: CampaignReport | null;
   children: ReactNode;
 }) {
   const progress = useLiveProgress(campaign.id, initialProgress);
@@ -48,6 +55,13 @@ export function CampaignStatusView({
 
   // Counted in a stable way so the recipients table can refresh as numbers change.
   const processed = counts.SENT + counts.FAILED + counts.SKIPPED;
+  const refreshKey = `${status}:${processed}`;
+
+  // The report refreshes along with the progress polling (see use-live-report.ts).
+  const live = useLiveReport(campaign.id, initialReport, { status, finishedAt: progress.finishedAt, refreshKey });
+  const report = live.report;
+  // Nothing to report before sending starts (scheduled), or if nothing was ever sent.
+  const showReport = !!report && status !== "SCHEDULED" && (status === "SENDING" || counts.SENT > 0 || report.stats.sentCount > 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,7 +90,24 @@ export function CampaignStatusView({
         <ProgressCard progress={progress} />
       )}
 
-      {total > 0 && <RecipientsTable campaignId={campaign.id} counts={counts} total={total} refreshKey={`${status}:${processed}`} />}
+      {showReport && report && (
+        <CampaignReportSection report={report} loading={live.loading} error={live.error} onRefresh={() => void live.refresh()} />
+      )}
+
+      {total > 0 && (
+        <RecipientsTable
+          campaignId={campaign.id}
+          counts={counts}
+          total={total}
+          // Also reloads the rows after a report refresh, so new opens/clicks show up.
+          refreshKey={`${refreshKey}:${report?.generatedAt ?? ""}`}
+          engagement={
+            showReport && report
+              ? { trackOpens: report.trackOpens, trackClicks: report.trackClicks, counts: report.recipients }
+              : null
+          }
+        />
+      )}
 
       {children}
     </div>

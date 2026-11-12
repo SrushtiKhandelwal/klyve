@@ -33,6 +33,7 @@ import {
   draftToCondition,
   newDraft,
   type AttributeOption,
+  type CampaignOption,
   type DraftCondition,
   type FieldOption,
   type ListOption,
@@ -47,9 +48,11 @@ type Props = {
   segment?: { id: string; name: string; rules: unknown };
   attributes: AttributeOption[];
   lists: ListOption[];
+  /** Sent campaigns, for the "Email activity" conditions. */
+  campaigns: CampaignOption[];
 };
 
-export function SegmentBuilder({ segment, attributes, lists }: Props) {
+export function SegmentBuilder({ segment, attributes, lists, campaigns }: Props) {
   const router = useRouter();
 
   // The saved rules came from the database. If they can't be read (very old
@@ -182,11 +185,12 @@ export function SegmentBuilder({ segment, attributes, lists }: Props) {
 
   const attributeLabels = useMemo(() => new Map(attributes.map((a) => [a.key, a.label])), [attributes]);
   const listNames = useMemo(() => new Map(lists.map((l) => [l.id, l.name])), [lists]);
+  const campaignNames = useMemo(() => new Map(campaigns.map((c) => [c.id, c.name])), [campaigns]);
   // Describe the cleaned-up rules (numbers as numbers, trimmed text) once they're valid.
   const summary = useMemo(() => {
     const checked = checkSegmentRules(rules, context);
-    return describeSegmentRules(checked.ok ? checked.rules : rules, { attributeLabels, listNames });
-  }, [rules, context, attributeLabels, listNames]);
+    return describeSegmentRules(checked.ok ? checked.rules : rules, { attributeLabels, listNames, campaignNames });
+  }, [rules, context, attributeLabels, listNames, campaignNames]);
 
   return (
     <form onSubmit={save} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
@@ -261,6 +265,7 @@ export function SegmentBuilder({ segment, attributes, lists }: Props) {
                   draft={draft}
                   fieldOptions={fieldOptions}
                   lists={lists}
+                  campaigns={campaigns}
                   problem={problems[index]}
                   onChange={(next) => updateDraft(draft.uid, next)}
                   onRemove={() => removeDraft(draft.uid)}
@@ -280,7 +285,8 @@ export function SegmentBuilder({ segment, attributes, lists }: Props) {
 
           <p className="border-t px-5 py-3 text-xs text-zinc-500">
             Text matching ignores upper/lower case. “Is not” and “does not contain” also include contacts who
-            have no value for that field. Dates use UTC.
+            have no value for that field. Dates use UTC. Email activity only counts real people: automatic
+            opens by privacy scanners are ignored, and a click also counts as an open.
           </p>
         </section>
 

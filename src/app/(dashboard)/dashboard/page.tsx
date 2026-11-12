@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, FileText, Send, Server, Users, type LucideIcon } from "lucide-react";
 import { PageContainer } from "@/components/dashboard/page-header";
+import { PerformanceOverview, PerformanceOverviewSkeleton } from "@/components/dashboard/performance-overview";
 import {
   RecentCampaigns,
   RecentCampaignsHeader,
@@ -69,6 +70,16 @@ export default function DashboardPage() {
         {/* The cards show straight away; the "Done" ticks stream in. */}
         <Suspense fallback={<StepList />}>
           <GettingStarted />
+        </Suspense>
+      </section>
+
+      <section aria-labelledby="performance" className="flex flex-col gap-4">
+        <h2 id="performance" className="text-lg font-semibold text-zinc-900">
+          Last 30 days
+        </h2>
+        {/* Reads the workspace (cookie), so it streams in. */}
+        <Suspense fallback={<PerformanceOverviewSkeleton />}>
+          <PerformanceOverview />
         </Suspense>
       </section>
 

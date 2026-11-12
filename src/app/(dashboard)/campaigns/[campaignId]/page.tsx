@@ -17,6 +17,7 @@ import { getVerifiedSenders, listProviderChoices } from "@/lib/email/senders";
 import { listSegments } from "@/lib/segments/queries";
 import { BUILTIN_MERGE_TAGS, attributeMergeTag, type MergeTag } from "@/lib/templates/document";
 import { sampleAttributeValue } from "@/lib/templates/sample-data";
+import { getCampaignReport } from "@/lib/tracking/reports";
 import { requireUser } from "@/lib/session";
 import { requireActiveWorkspace, type ActiveWorkspace } from "@/lib/workspace";
 
@@ -118,6 +119,8 @@ async function DraftContent({
           audience: campaign.audience,
           senderId: campaign.sender?.id ?? null,
           document: campaign.document,
+          trackOpens: campaign.trackOpens,
+          trackClicks: campaign.trackClicks,
           canDelete,
         }}
         sources={sources}
@@ -134,10 +137,12 @@ async function DraftContent({
 // ── Scheduled / sending / finished: the status page ─────────────────────────
 
 async function StatusContent({ ws, campaign, canDelete }: { ws: ActiveWorkspace; campaign: CampaignDetail; canDelete: boolean }) {
-  const [progress, lists, segments] = await Promise.all([
+  const [progress, lists, segments, report] = await Promise.all([
     getCampaignProgress(ws.id, campaign.id),
     getListOptions(ws.id),
     listSegments(ws.id),
+    // A scheduled campaign has nothing to report yet.
+    campaign.status === "SCHEDULED" ? null : getCampaignReport(ws.id, campaign.id),
   ]);
   if (!progress) notFound(); // deleted a moment ago
 
@@ -147,6 +152,7 @@ async function StatusContent({ ws, campaign, canDelete }: { ws: ActiveWorkspace;
     <CampaignStatusView
       campaign={{ id: campaign.id, name: campaign.name, scheduledAt: iso(campaign.scheduledAt), canDelete }}
       initialProgress={toProgressView(progress)}
+      initialReport={report}
     >
       <CampaignSummary
         subject={campaign.subject}

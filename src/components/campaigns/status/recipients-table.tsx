@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Search, SearchX } from "lucide-react";
+import { Ban, ChevronLeft, ChevronRight, Eye, Loader2, MailX, MousePointerClick, Search, SearchX, UserMinus, type LucideIcon } from "lucide-react";
 import { listCampaignRecipientsAction } from "@/app/actions/campaigns";
 import { RecipientStatusBadge } from "@/components/campaigns/campaign-status-badge";
 import { LocalDateTime } from "@/components/campaigns/local-time";
@@ -11,11 +11,41 @@ import { Input } from "@/components/ui/input";
 import { RECIPIENT_STATUSES, RECIPIENT_STATUS_META, type RecipientStatusValue } from "@/lib/campaigns/status";
 import { cn } from "@/lib/utils";
 
-type Row = { id: string; email: string; status: RecipientStatusValue; attempts: number; lastError: string | null; sentAt: string | null };
+type Row = {
+  id: string;
+  email: string;
+  status: RecipientStatusValue;
+  attempts: number;
+  lastError: string | null;
+  sentAt: string | null;
+  firstOpenedAt: string | null;
+  openCount: number;
+  firstClickedAt: string | null;
+  clickCount: number;
+  bouncedAt: string | null;
+  bounceType: string | null;
+  softBounced: boolean;
+  complainedAt: string | null;
+  unsubscribedAt: string | null;
+};
 type PageData = { rows: Row[]; total: number; page: number; pageCount: number };
-type Query = { status: RecipientStatusValue | ""; q: string; page: number };
+
+/** Engagement filters (same values as ENGAGEMENT_FILTERS in src/lib/campaigns/queries.ts). */
+type EngagementValue = "opened" | "clicked" | "not_opened" | "bounced" | "complained" | "unsubscribed";
+/** One chip is active at a time: a sending status OR an engagement filter. */
+type Filter = { kind: "all" } | { kind: "status"; value: RecipientStatusValue } | { kind: "engagement"; value: EngagementValue };
+type Query = { filter: Filter; q: string; page: number };
+
+/** Report numbers the engagement chips need (null before anything was sent). */
+export type EngagementInfo = {
+  trackOpens: boolean;
+  trackClicks: boolean;
+  counts: { opened: number; clicked: number; notOpened: number; bounced: number; complained: number; unsubscribed: number };
+};
 
 const PAGE_SIZE = 50;
+const iso = (d: Date | string | null) => (d ? new Date(d).toISOString() : null);
+const filterKey = (f: Filter) => (f.kind === "all" ? "all" : `${f.kind}:${f.value}`);
 
 /**
  * Who the campaign went to, 50 at a time: filter by status, search by email,
@@ -27,14 +57,17 @@ export function RecipientsTable({
   counts,
   total,
   refreshKey,
+  engagement,
 }: {
   campaignId: string;
   counts: Record<RecipientStatusValue, number>;
   total: number;
   /** Changes when the progress numbers change, so the rows stay fresh. */
   refreshKey: string;
+  /** Opens/clicks/bounces info from the report; null hides the engagement chips and badges. */
+  engagement: EngagementInfo | null;
 }) {
-  const [query, setQuery] = useState<Query>({ status: "", q: "", page: 1 });
+  const [query, setQuery] = useState<Query>({ filter: { kind: "all" }, q: "", page: 1 });
   const [search, setSearch] = useState("");
   const [data, setData] = useState<PageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +86,8 @@ export function RecipientsTable({
       setLoading(true);
       try {
         const res = await listCampaignRecipientsAction(campaignId, {
-          status: query.status || undefined,
+          status: query.filter.kind === "status" ? query.filter.value : undefined,
+          engagement: query.filter.kind === "engagement" ? query.filter.value : undefined,
           q: query.q || undefined,
           page: query.page,
         });
@@ -67,7 +101,12 @@ export function RecipientsTable({
             rows: res.page.rows.map((r) => ({
               ...r,
               status: r.status as RecipientStatusValue,
-              sentAt: r.sentAt ? new Date(r.sentAt).toISOString() : null,
+              sentAt: iso(r.sentAt),
+              firstOpenedAt: iso(r.firstOpenedAt),
+              firstClickedAt: iso(r.firstClickedAt),
+              bouncedAt: iso(r.bouncedAt),
+              complainedAt: iso(r.complainedAt),
+              unsubscribedAt: iso(r.unsubscribedAt),
             })),
           });
         }
@@ -88,15 +127,30 @@ export function RecipientsTable({
     timer.current = setTimeout(() => setQuery((q) => ({ ...q, q: value.trim(), page: 1 })), 350);
   }
 
-  const filters: { value: RecipientStatusValue | ""; label: string; count: number }[] = [
-    { value: "", label: "All", count: total },
-    ...RECIPIENT_STATUSES.filter((s) => s !== "SENDING").map((s) => ({
-      value: s,
-      label: RECIPIENT_STATUS_META[s].label,
-      // "Queued" also counts the few being handed to the provider right now.
-      count: s === "PENDING" ? counts.PENDING + counts.SENDING : counts[s],
-    })),
+  const statusFilters: Chip[] = [
+    { filter: { kind: "all" }, label: "All", count: total },
+    ...RECIPIENT_STATUSES.filter((s) => s !== "SENDING").map(
+      (s): Chip => ({
+        filter: { kind: "status", value: s },
+        label: RECIPIENT_STATUS_META[s].label,
+        // "Queued" also counts the few being handed to the provider right now.
+        count: s === "PENDING" ? counts.PENDING + counts.SENDING : counts[s],
+      }),
+    ),
   ];
+  // Opens/clicks chips only when they were tracked (otherwise "0 opened" would mislead).
+  const engagementFilters: Chip[] = [];
+  if (engagement) {
+    const c = engagement.counts;
+    const add = (value: EngagementValue, label: string, count: number) =>
+      engagementFilters.push({ filter: { kind: "engagement", value }, label, count });
+    if (engagement.trackOpens) add("opened", "Opened", c.opened);
+    if (engagement.trackClicks) add("clicked", "Clicked", c.clicked);
+    if (engagement.trackOpens) add("not_opened", "Didn\u2019t open", c.notOpened);
+    add("bounced", "Bounced", c.bounced);
+    add("complained", "Complained", c.complained);
+    add("unsubscribed", "Unsubscribed", c.unsubscribed);
+  }
 
   const from = data && data.total > 0 ? (data.page - 1) * PAGE_SIZE + 1 : 0;
   const to = data ? Math.min(data.page * PAGE_SIZE, data.total) : 0;
@@ -130,26 +184,22 @@ export function RecipientsTable({
         </form>
       </div>
 
-      {/* Status chips scroll sideways on phones instead of wrapping into many rows. */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filter by status">
-        {filters.map((f) => {
-          const active = query.status === f.value;
-          return (
-            <button
-              key={f.value || "all"}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setQuery((q) => ({ ...q, status: f.value, page: 1 }))}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-emerald-500/40",
-                active ? "border-emerald-600 bg-emerald-600 text-white" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300",
-              )}
-            >
-              {f.label}
-              <span className={cn("rounded-full px-1.5 text-xs tabular-nums", active ? "bg-white/20" : "bg-zinc-100")}>{formatCount(f.count)}</span>
-            </button>
-          );
-        })}
+      {/* Filter chips scroll sideways on phones instead of wrapping into many rows. */}
+      <div className="flex flex-col gap-2">
+        <FilterChips
+          label="Filter by sending status"
+          chips={statusFilters}
+          active={query.filter}
+          onSelect={(filter) => setQuery((q) => ({ ...q, filter, page: 1 }))}
+        />
+        {engagementFilters.length > 0 && (
+          <FilterChips
+            label="Filter by engagement"
+            chips={engagementFilters}
+            active={query.filter}
+            onSelect={(filter) => setQuery((q) => ({ ...q, filter, page: 1 }))}
+          />
+        )}
       </div>
 
       {error ? (
@@ -176,6 +226,7 @@ export function RecipientsTable({
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
                 {r.status === "SENT" && r.sentAt && <LocalDateTime iso={r.sentAt} />}
                 {r.attempts > 1 && <span>{r.attempts} tries</span>}
+                {engagement && <EngagementBadges row={r} />}
                 <RecipientStatusBadge status={r.status} />
               </span>
               {r.lastError && (r.status === "FAILED" || r.status === "SKIPPED" || r.status === "PENDING") && (
@@ -224,5 +275,90 @@ export function RecipientsTable({
         </nav>
       )}
     </section>
+  );
+}
+
+type Chip = { filter: Filter; label: string; count: number };
+
+function FilterChips({
+  label,
+  chips,
+  active,
+  onSelect,
+}: {
+  label: string;
+  chips: Chip[];
+  active: Filter;
+  onSelect: (filter: Filter) => void;
+}) {
+  return (
+    <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label={label}>
+      {chips.map((chip) => {
+        const isActive = filterKey(active) === filterKey(chip.filter);
+        return (
+          <button
+            key={filterKey(chip.filter)}
+            type="button"
+            aria-pressed={isActive}
+            onClick={() => onSelect(chip.filter)}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-emerald-500/40",
+              isActive ? "border-emerald-600 bg-emerald-600 text-white" : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300",
+            )}
+          >
+            {chip.label}
+            <span className={cn("rounded-full px-1.5 text-xs tabular-nums", isActive ? "bg-white/20" : "bg-zinc-100")}>
+              {formatCount(chip.count)}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Small labelled icons for what this person did: opened (×N), clicked (×N),
+ * bounced, marked as spam, unsubscribed. The words are always there too, so
+ * it never relies on colour alone. Hover shows when it first happened.
+ */
+function EngagementBadges({ row }: { row: Row }) {
+  const items: { key: string; icon: LucideIcon; text: string; at: string; className: string }[] = [];
+  if (row.firstOpenedAt)
+    items.push({
+      key: "open",
+      icon: Eye,
+      text: row.openCount > 1 ? `Opened \u00d7${row.openCount}` : "Opened",
+      at: `First opened ${row.firstOpenedAt}`,
+      className: "text-emerald-700",
+    });
+  if (row.firstClickedAt)
+    items.push({
+      key: "click",
+      icon: MousePointerClick,
+      text: row.clickCount > 1 ? `Clicked \u00d7${row.clickCount}` : "Clicked",
+      at: `First clicked ${row.firstClickedAt}`,
+      className: "text-violet-700",
+    });
+  if (row.bouncedAt)
+    items.push({ key: "bounce", icon: MailX, text: "Bounced (hard)", at: `Bounced ${row.bouncedAt}`, className: "text-amber-700" });
+  else if (row.softBounced)
+    // No time for soft bounces: they're only stored as events.
+    items.push({ key: "bounce", icon: MailX, text: "Bounced (soft)", at: "", className: "text-amber-700" });
+  if (row.complainedAt)
+    items.push({ key: "spam", icon: Ban, text: "Marked as spam", at: `Marked as spam ${row.complainedAt}`, className: "text-red-700" });
+  if (row.unsubscribedAt)
+    items.push({ key: "unsub", icon: UserMinus, text: "Unsubscribed", at: `Unsubscribed ${row.unsubscribedAt}`, className: "text-zinc-600" });
+  if (items.length === 0) return null;
+  return (
+    <>
+      {items.map(({ key, icon: Icon, text, at, className }) => (
+        // The time in the tooltip is UTC (ISO); the exact time isn't what matters here.
+        <span key={key} className={cn("inline-flex items-center gap-1 font-medium", className)} title={at ? at.replace("T", " ").slice(0, -8) + " UTC" : "A temporary problem, like a full mailbox"}>
+          <Icon className="size-3.5" aria-hidden />
+          {text}
+        </span>
+      ))}
+    </>
   );
 }

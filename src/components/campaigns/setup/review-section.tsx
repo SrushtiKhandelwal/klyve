@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CircleCheck, CircleX, Info, Loader2, RefreshCw, Rocket, Send, TriangleAlert } from "lucide-react";
+import { CalendarClock, CircleCheck, CircleX, Loader2, RefreshCw, Rocket, Send, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { launchCampaignAction, preflightCampaignAction } from "@/app/actions/campaigns";
 import { formatDateTime, localTimeZoneLabel, useInBrowser } from "@/components/campaigns/local-time";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TrackingSwitches } from "./tracking-switches";
 
 export type SectionId = "recipients" | "sender" | "subject" | "design";
 
@@ -61,6 +62,8 @@ export function ReviewSection({
   savedVersion,
   flush,
   onFixSection,
+  tracking,
+  onTrackingChange,
 }: {
   campaignId: string;
   subject: string;
@@ -70,6 +73,9 @@ export function ReviewSection({
   /** Saves anything still waiting; resolves false if that failed. */
   flush: () => Promise<boolean>;
   onFixSection: (section: SectionId) => void;
+  /** The "Track opens" / "Track clicks" switches (saved with the draft). */
+  tracking: { trackOpens: boolean; trackClicks: boolean };
+  onTrackingChange: (patch: { trackOpens?: boolean; trackClicks?: boolean }) => void;
 }) {
   const router = useRouter();
   const local = useInBrowser();
@@ -174,6 +180,8 @@ export function ReviewSection({
 
       <div className="flex flex-col gap-5 border-t px-4 py-5 sm:px-5">
         <Checks check={check} result={result} onFixSection={onFixSection} />
+
+        <TrackingSwitches trackOpens={tracking.trackOpens} trackClicks={tracking.trackClicks} onChange={onTrackingChange} />
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-2 text-sm font-medium text-zinc-900">When should it go out?</legend>
@@ -337,10 +345,6 @@ function Checks({
         </div>
       )}
 
-      <p className="flex items-start gap-1.5 text-xs text-zinc-500">
-        <Info className="mt-px size-3.5 shrink-0" aria-hidden />
-        Opens and clicks tracking arrives in a later update. For now you&apos;ll see who it was sent to and any failures.
-      </p>
     </div>
   );
 }

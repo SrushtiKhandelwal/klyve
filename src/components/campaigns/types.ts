@@ -13,6 +13,14 @@ export type CampaignRowView = {
   recipientCount: number;
   sentCount: number;
   failedCount: number;
+  /** Phase 5: tracking switches + unique engagement counters (for the open/click rate columns). */
+  trackOpens: boolean;
+  trackClicks: boolean;
+  openCount: number;
+  clickCount: number;
+  bounceCount: number;
+  complaintCount: number;
+  unsubscribeCount: number;
   scheduledAt: string | null;
   startedAt: string | null;
   finishedAt: string | null;

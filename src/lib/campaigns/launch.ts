@@ -13,6 +13,7 @@ import { emailDocumentSchema } from "@/lib/templates/document";
 import { TemplateError, buildMergeData, personalize } from "@/lib/templates/personalize";
 import { InvalidDocumentError, renderDocument } from "@/lib/templates/render";
 import { SAMPLE_CONTACT } from "@/lib/templates/sample-data";
+import { prepareTrackedHtml, untrackHtml } from "@/lib/tracking/links";
 
 // Launching campaigns and moving them between states.
 //
@@ -58,26 +59,49 @@ export async function launchCampaign(
   const { result, ready } = await runPreflight(workspaceId, campaignId, userId, { scheduledAt });
   if (!result.ok || !ready) return { ok: false, problems: result.problems };
 
+  // Tracking: rewrite links / add the open pixel in the HTML we freeze.
+  // `updatedAt` must match what preflight checked, so these switches belong
+  // to the very version that was checked.
+  const switches = await db.campaign.findFirst({
+    where: { id: campaignId, workspaceId },
+    select: { trackOpens: true, trackClicks: true, updatedAt: true },
+  });
+  if (!switches || switches.updatedAt.getTime() !== ready.updatedAt.getTime()) {
+    return { ok: false, problems: [{ code: "changed", message: "The campaign was changed while it was being checked. Please try again." }] };
+  }
+  const tracked = prepareTrackedHtml(ready.html, switches);
+
   const now = new Date();
   // ONE conditional write claims the launch. `updatedAt` must still be what
   // we checked: if the draft was edited in the meantime, we don't launch
-  // content that was never checked.
-  const claimed = await db.campaign.updateMany({
-    where: { id: campaignId, workspaceId, status: "DRAFT", updatedAt: ready.updatedAt },
-    data: {
-      status: scheduledAt ? "SCHEDULED" : "SENDING",
-      html: ready.html,
-      text: ready.text,
-      providerId: ready.providerId, // frozen: the worker always uses this one
-      scheduledAt,
-      startedAt: scheduledAt ? null : now,
-      finishedAt: null,
-      lastError: null,
-      recipientCount: 0,
-      sentCount: 0,
-      failedCount: 0,
-      skippedCount: 0,
-    },
+  // content that was never checked. The tracked links are saved in the SAME
+  // transaction, so a launched campaign never has links missing.
+  const claimed = await db.$transaction(async (tx) => {
+    const claim = await tx.campaign.updateMany({
+      where: { id: campaignId, workspaceId, status: "DRAFT", updatedAt: ready.updatedAt },
+      data: {
+        status: scheduledAt ? "SCHEDULED" : "SENDING",
+        html: tracked.html,
+        text: ready.text, // the plain-text part keeps the real links (never tracked)
+        providerId: ready.providerId, // frozen: the worker always uses this one
+        scheduledAt,
+        startedAt: scheduledAt ? null : now,
+        finishedAt: null,
+        lastError: null,
+        recipientCount: 0,
+        sentCount: 0,
+        failedCount: 0,
+        skippedCount: 0,
+      },
+    });
+    if (claim.count === 1) {
+      // Leftovers from an earlier launch that was unscheduled: start clean.
+      await tx.campaignLink.deleteMany({ where: { campaignId } });
+      if (tracked.links.length > 0) {
+        await tx.campaignLink.createMany({ data: tracked.links.map((l) => ({ campaignId, position: l.position, url: l.url })) });
+      }
+    }
+    return claim;
   });
   if (claimed.count === 0) {
     const current = await db.campaign.findFirst({ where: { id: campaignId, workspaceId }, select: { status: true } });
@@ -292,6 +316,8 @@ export async function unscheduleCampaign(ws: WorkspaceArg, campaignId: string): 
   if (r.count !== 1) return explain(workspaceId, campaignId, "unscheduled");
   // A scheduled campaign has no recipients yet, but clear any just in case.
   await db.campaignRecipient.deleteMany({ where: { campaignId, status: "PENDING" } });
+  // Its tracked links are re-made from the (possibly edited) design at the next launch.
+  await db.campaignLink.deleteMany({ where: { campaignId } });
   return { ok: true };
 }
 
@@ -355,7 +381,10 @@ export async function sendCampaignTest(
   // rendered fresh from its current design.
   let parts: { html: string; text: string };
   if (campaign.status !== "DRAFT" && campaign.html) {
-    parts = { html: campaign.html, text: campaign.text };
+    // Without tracking: there's no real recipient to count, so the test gets
+    // the original links back and no open pixel.
+    const links = await db.campaignLink.findMany({ where: { campaignId }, select: { position: true, url: true } });
+    parts = { html: untrackHtml(campaign.html, links), text: campaign.text };
   } else {
     const doc = campaign.document ? emailDocumentSchema.safeParse(campaign.document) : null;
     if (!doc?.success) return { ok: false, message: "Design the email first, then send a test." };

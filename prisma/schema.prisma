@@ -576,6 +576,8 @@ model CampaignRecipient {
 
   @@unique([campaignId, contactId])
   @@index([providerMessageId])
+  /// For a contact's activity timeline and "opened any campaign" segments.
+  @@index([contactId])
   @@index([campaignId, status])
   @@index([status, nextAttemptAt])
   @@map("campaign_recipient")
@@ -605,8 +607,9 @@ model CampaignLink {
   campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   /// 0, 1, 2… in the order the links appear in the email.
   position     Int
-  /// The real destination (http/https only; merge tags already resolved is NOT
-  /// possible here, so links containing {{ }} are not rewritten).
+  /// The real destination, exactly as written in the email. It may contain
+  /// merge tags (e.g. ?e={{ contact.EMAIL }}): they are filled in for the
+  /// clicking recipient at click time, then checked to be http(s).
   url          String
   /// Total and unique-person clicks, for the "top links" report.
   clickCount   Int      @default(0)

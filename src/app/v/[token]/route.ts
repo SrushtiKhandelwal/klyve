@@ -4,6 +4,7 @@ import { createRecipientToken, verifyRecipientToken } from "@/lib/campaigns/toke
 import { clientIp, unsubscribeRateLimiter } from "@/lib/campaigns/unsubscribe";
 import { db } from "@/lib/db";
 import { buildMergeData, personalize, type MergeData } from "@/lib/templates/personalize";
+import { TRANSPARENT_GIF_DATA_URI, trackingUrls, type TrackingMergeData } from "@/lib/tracking/links";
 
 // GET /v/<token>: "View in browser". Shows the campaign email exactly as this
 // recipient got it (their name, their own unsubscribe link).
@@ -94,13 +95,24 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/v/[token]">)
       ? recipient.contact
       : { email: recipient.email, firstName: null, lastName: null, attributes: {} };
 
-  const data: MergeData & { view_in_browser_url: string } = {
+  const data: MergeData & { tracking: TrackingMergeData } = {
     ...buildMergeData(contact, {
       unsubscribeUrl: absoluteUrl(`/u/${createRecipientToken(recipient.id, "unsubscribe")}`),
       workspaceName: campaign.workspace.name,
     }),
     view_in_browser_url: absoluteUrl(`/v/${token}`),
+    tracking: {
+      // Clicks on the web version are real clicks: they go through the same
+      // tracked redirect as in the email, so they still count.
+      click_base: trackingUrls(recipient.id).click_base,
+      // But looking at the web version is NOT counted as an open (the person
+      // already opened the email to find this link, and reloading the page
+      // would inflate the numbers), so the pixel is an inline blank image.
+      open_url: TRANSPARENT_GIF_DATA_URI,
+    },
   };
+  // (Campaigns sent before tracking existed have no {{ tracking.… }} tags;
+  // the extra values are then simply unused.)
 
   let html: string;
   try {

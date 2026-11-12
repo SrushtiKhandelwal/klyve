@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/dashboard/page-header";
 import { EditProviderForm } from "@/components/settings/providers/edit-provider-form";
 import { ProviderStatusBadge, RelativeTime } from "@/components/settings/providers/provider-bits";
+import { WebhookCard } from "@/components/settings/providers/webhook-card";
 import { providerLabel } from "@/components/settings/providers/provider-rules";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProviderForEdit } from "@/lib/email/provider-admin";
+import { getWebhookSettings } from "@/lib/webhooks/admin";
 import { requireActiveWorkspace } from "@/lib/workspace";
 import { BackToProviders, ManagersOnlyNotice } from "../back-link";
 
@@ -36,6 +38,8 @@ async function EditProviderContent({ params }: Props) {
   if (!provider) notFound();
 
   const canManage = ws.role === "OWNER" || ws.role === "ADMIN";
+  // Only managers see the webhook URL: it contains a secret token.
+  const webhook = canManage ? await getWebhookSettings(ws.id, provider.id) : null;
 
   return (
     <>
@@ -82,6 +86,7 @@ async function EditProviderContent({ params }: Props) {
               values: provider.values,
             }}
           />
+          {webhook && <WebhookCard providerId={provider.id} settings={webhook} />}
         </>
       )}
     </>

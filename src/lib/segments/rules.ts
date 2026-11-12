@@ -32,6 +32,7 @@ export const BUILTIN_SEGMENT_FIELDS = [
   "status",
   "createdAt",
   "list",
+  "engagement",
 ] as const;
 export type BuiltinSegmentField = (typeof BUILTIN_SEGMENT_FIELDS)[number];
 export type SegmentField = BuiltinSegmentField | "attribute";
@@ -43,10 +44,11 @@ export const BUILTIN_FIELD_LABELS: Record<BuiltinSegmentField, string> = {
   status: "Status",
   createdAt: "Date added",
   list: "List",
+  engagement: "Email activity",
 };
 
 /** Decides which operators and which value input a field gets. */
-export type FieldKind = AttributeTypeValue | "STATUS" | "LIST";
+export type FieldKind = AttributeTypeValue | "STATUS" | "LIST" | "ENGAGEMENT";
 
 const BUILTIN_FIELD_KINDS: Record<BuiltinSegmentField, FieldKind> = {
   email: "TEXT",
@@ -55,6 +57,7 @@ const BUILTIN_FIELD_KINDS: Record<BuiltinSegmentField, FieldKind> = {
   status: "STATUS",
   createdAt: "DATE",
   list: "LIST",
+  engagement: "ENGAGEMENT",
 };
 
 export const TEXT_OPERATORS = [
@@ -81,6 +84,47 @@ export const BOOLEAN_OPERATORS = ["is_true", "is_false", "is_empty"] as const;
 export const STATUS_OPERATORS = ["is", "is_not"] as const;
 export const LIST_OPERATORS = ["in_list", "not_in_list"] as const;
 
+// "Email activity": what a contact did with the campaigns we sent them.
+// Exact meaning of each operator (engine.ts follows this; keep them in sync):
+//  - "Received" = a campaign_recipient row with status SENT.
+//  - "Opened"   = a HUMAN open OR click (a click proves they saw the email,
+//                 even if their app blocked the tracking image). Automatic
+//                 opens by bots / privacy scanners (isBot) never count.
+//  - "Clicked"  = a HUMAN click.
+//  - Negated per-campaign operators ("didn't open campaign X") only match
+//    people who RECEIVED X. That's what "remind people who didn't open"
+//    means: someone who never got X can't have "not opened" it.
+//  - "didn't open/click any email in the last N days" only matches people who
+//    were sent at least one email in those N days and had no human open/click
+//    (of any email) in that time.
+//  - "never opened any" = received at least one email and never opened any.
+//  - "didn't receive campaign X" is a plain NOT: everyone who didn't get X.
+//  - "has ever bounced / marked as spam" = for any campaign of this workspace.
+//  - "In the last N days" = the last N x 24 hours, like "Date added".
+export const ENGAGEMENT_DAYS_OPERATORS = [
+  "opened_any_in_last_days",
+  "not_opened_any_in_last_days",
+  "clicked_any_in_last_days",
+  "not_clicked_any_in_last_days",
+] as const;
+export const ENGAGEMENT_CAMPAIGN_OPERATORS = [
+  "received_campaign",
+  "not_received_campaign",
+  "opened_campaign",
+  "not_opened_campaign",
+  "clicked_campaign",
+  "not_clicked_campaign",
+] as const;
+export const ENGAGEMENT_FLAG_OPERATORS = ["never_opened_any", "bounced_ever", "complained_ever"] as const;
+export const ENGAGEMENT_OPERATORS = [
+  ...ENGAGEMENT_DAYS_OPERATORS,
+  ...ENGAGEMENT_CAMPAIGN_OPERATORS,
+  ...ENGAGEMENT_FLAG_OPERATORS,
+] as const;
+
+/** Most days an email-activity "in the last N days" condition may look back (10 years). */
+export const MAX_ENGAGEMENT_DAYS = 3650;
+
 /** Every operator name, once each. */
 export const ALL_OPERATORS = [
   ...TEXT_OPERATORS,
@@ -98,6 +142,7 @@ export const ALL_OPERATORS = [
   ...BOOLEAN_OPERATORS.filter((op) => op !== "is_empty"),
   ...STATUS_OPERATORS,
   ...LIST_OPERATORS,
+  ...ENGAGEMENT_OPERATORS,
 ] as const;
 export type SegmentOperator = (typeof ALL_OPERATORS)[number];
 
@@ -108,6 +153,7 @@ const OPERATORS_BY_KIND: Record<FieldKind, readonly SegmentOperator[]> = {
   BOOLEAN: BOOLEAN_OPERATORS,
   STATUS: STATUS_OPERATORS,
   LIST: LIST_OPERATORS,
+  ENGAGEMENT: ENGAGEMENT_OPERATORS,
 };
 
 /** Words shown in the operator dropdown and in summaries. */
@@ -137,7 +183,40 @@ export const OPERATOR_LABELS: Record<SegmentOperator, string> = {
   is_not: "is not",
   in_list: "is in list",
   not_in_list: "is not in list",
+  opened_any_in_last_days: "opened any email in the last",
+  not_opened_any_in_last_days: "didn't open any email in the last",
+  clicked_any_in_last_days: "clicked any email in the last",
+  not_clicked_any_in_last_days: "didn't click any email in the last",
+  received_campaign: "received campaign",
+  not_received_campaign: "didn't receive campaign",
+  opened_campaign: "opened campaign",
+  not_opened_campaign: "didn't open campaign",
+  clicked_campaign: "clicked in campaign",
+  not_clicked_campaign: "didn't click in campaign",
+  never_opened_any: "never opened any email",
+  bounced_ever: "has ever bounced",
+  complained_ever: "has ever marked an email as spam",
 };
+
+/** Short help under an email-activity condition, so its exact meaning is clear. */
+export const ENGAGEMENT_OPERATOR_HINTS: Partial<Record<SegmentOperator, string>> = {
+  opened_any_in_last_days: "A click counts as an open. Automatic opens by privacy scanners are ignored.",
+  not_opened_any_in_last_days: "People who were sent at least one email in this time but opened none.",
+  not_clicked_any_in_last_days: "People who were sent at least one email in this time but clicked none.",
+  not_received_campaign: "Everyone who didn't get this campaign, including people added since.",
+  opened_campaign: "A click counts as an open. Automatic opens by privacy scanners are ignored.",
+  not_opened_campaign: "Only people who received this campaign and didn't open it.",
+  not_clicked_campaign: "Only people who received this campaign and didn't click a link in it.",
+  never_opened_any: "People who were sent at least one email and never opened any.",
+};
+
+export function isEngagementDaysOperator(op: SegmentOperator): boolean {
+  return (ENGAGEMENT_DAYS_OPERATORS as readonly string[]).includes(op);
+}
+
+export function isEngagementCampaignOperator(op: SegmentOperator): boolean {
+  return (ENGAGEMENT_CAMPAIGN_OPERATORS as readonly string[]).includes(op);
+}
 
 /** Operators that don't need a value (the value box is hidden for them). */
 export const VALUELESS_OPERATORS = new Set<SegmentOperator>([
@@ -145,6 +224,7 @@ export const VALUELESS_OPERATORS = new Set<SegmentOperator>([
   "is_not_empty",
   "is_true",
   "is_false",
+  ...ENGAGEMENT_FLAG_OPERATORS,
 ]);
 
 /** The operators allowed for a field. Email and date added are never empty. */
@@ -210,6 +290,7 @@ export const segmentRulesSchema = z.strictObject({
  *  - in_last_days (+ not):  a whole number of days
  *  - status is / is_not:    an array of statuses, e.g. ["SUBSCRIBED"]
  *  - list operators:        a list id
+ *  - email activity:        a whole number of days, a campaign id, or null (see ENGAGEMENT_*_OPERATORS)
  *  - is_empty and friends:  null (not needed)
  */
 export type SegmentCondition = z.infer<typeof segmentConditionSchema>;
@@ -232,6 +313,11 @@ export type RulesContext = {
   attributeTypes: ReadonlyMap<string, AttributeTypeValue>;
   /** Ids of the workspace's lists. Leave out to skip the list check (browser). */
   listIds?: ReadonlySet<string>;
+  /**
+   * Ids of the workspace's campaigns that were sent (or are being sent), i.e.
+   * the ones "opened campaign X" may use. Leave out to skip the check (browser).
+   */
+  campaignIds?: ReadonlySet<string>;
 };
 
 export type CheckRulesResult =
@@ -358,6 +444,27 @@ function checkValue(
     case "BOOLEAN":
       // Every boolean operator is valueless, so we never get here.
       return { ok: true, value: null };
+
+    case "ENGAGEMENT": {
+      if (isEngagementDaysOperator(operator)) {
+        const days = toNumber(raw);
+        if (days === null || !Number.isInteger(days) || days < 1 || days > MAX_ENGAGEMENT_DAYS) {
+          return { ok: false, error: `Enter a whole number of days (1 to ${MAX_ENGAGEMENT_DAYS}).` };
+        }
+        return { ok: true, value: days };
+      }
+      if (isEngagementCampaignOperator(operator)) {
+        if (typeof raw !== "string" || raw.trim() === "" || raw.length > 64) {
+          return { ok: false, error: "Pick a campaign." };
+        }
+        if (context.campaignIds && !context.campaignIds.has(raw)) {
+          return { ok: false, error: "That campaign no longer exists or hasn't been sent yet." };
+        }
+        return { ok: true, value: raw };
+      }
+      // The flag operators need no value (handled at the top).
+      return { ok: true, value: null };
+    }
   }
 }
 
@@ -379,6 +486,8 @@ export type SummaryLookups = {
   attributeLabels?: ReadonlyMap<string, string>;
   /** List id → list name. */
   listNames?: ReadonlyMap<string, string>;
+  /** Campaign id → campaign name. */
+  campaignNames?: ReadonlyMap<string, string>;
 };
 
 /**
@@ -393,6 +502,7 @@ export function describeSegmentRules(rules: SegmentRules, lookups: SummaryLookup
 }
 
 export function describeCondition(condition: SegmentCondition, lookups: SummaryLookups = {}): string {
+  if (condition.field === "engagement") return describeEngagement(condition, lookups);
   const fieldName =
     condition.field === "attribute"
       ? (lookups.attributeLabels?.get(condition.key) ?? condition.key)
@@ -420,5 +530,42 @@ export function describeCondition(condition: SegmentCondition, lookups: SummaryL
       return `${fieldName} ${op} ${v} ${v === 1 ? "day" : "days"}`;
     default:
       return typeof v === "string" ? `${fieldName} ${op} "${v}"` : `${fieldName} ${op} ${v}`;
+  }
+}
+
+/** Email activity reads better as a sentence, e.g. Opened "Diwali offer". */
+function describeEngagement(condition: SegmentCondition, lookups: SummaryLookups): string {
+  const v = condition.value;
+  const days = `${v} ${v === 1 ? "day" : "days"}`;
+  const campaign = `"${typeof v === "string" ? (lookups.campaignNames?.get(v) ?? "a deleted campaign") : "?"}"`;
+  switch (condition.operator) {
+    case "opened_any_in_last_days":
+      return `Opened any email in the last ${days}`;
+    case "not_opened_any_in_last_days":
+      return `Didn't open any email in the last ${days}`;
+    case "clicked_any_in_last_days":
+      return `Clicked any email in the last ${days}`;
+    case "not_clicked_any_in_last_days":
+      return `Didn't click any email in the last ${days}`;
+    case "received_campaign":
+      return `Received ${campaign}`;
+    case "not_received_campaign":
+      return `Didn't receive ${campaign}`;
+    case "opened_campaign":
+      return `Opened ${campaign}`;
+    case "not_opened_campaign":
+      return `Received but didn't open ${campaign}`;
+    case "clicked_campaign":
+      return `Clicked in ${campaign}`;
+    case "not_clicked_campaign":
+      return `Received but didn't click in ${campaign}`;
+    case "never_opened_any":
+      return "Never opened any email";
+    case "bounced_ever":
+      return "Has ever bounced";
+    case "complained_ever":
+      return "Has ever marked an email as spam";
+    default:
+      return `Email activity ${OPERATOR_LABELS[condition.operator]}`;
   }
 }

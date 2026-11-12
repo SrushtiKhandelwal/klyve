@@ -5,6 +5,8 @@ import {
   BUILTIN_FIELD_LABELS,
   VALUELESS_OPERATORS,
   builtinFieldKind,
+  isEngagementCampaignOperator,
+  isEngagementDaysOperator,
   operatorsForField,
   type BuiltinSegmentField,
   type FieldKind,
@@ -15,13 +17,15 @@ import {
 
 export type AttributeOption = { key: string; label: string; type: AttributeTypeValue };
 export type ListOption = { id: string; name: string };
+/** A sent campaign for the "Email activity" picker. sentAt is ISO text. */
+export type CampaignOption = { id: string; name: string; sentAt: string | null };
 
 /** One entry in the "field" dropdown. id is "email", "status", ... or "attr:CITY". */
 export type FieldOption = {
   id: string;
   label: string;
   kind: FieldKind;
-  group: "Contact" | "Lists" | "Custom fields";
+  group: "Contact" | "Lists" | "Email activity" | "Custom fields";
   /** A custom field that was deleted but is still used by this segment. */
   missing?: boolean;
 };
@@ -35,6 +39,7 @@ export type DraftCondition = {
   text: string;
   statuses: string[];
   listId: string;
+  campaignId: string;
 };
 
 const CONTACT_FIELDS: BuiltinSegmentField[] = ["email", "firstName", "lastName", "status", "createdAt"];
@@ -48,6 +53,7 @@ export function buildFieldOptions(attributes: AttributeOption[], usedFieldIds: s
       group: "Contact" as const,
     })),
     { id: "list", label: "List membership", kind: "LIST", group: "Lists" },
+    { id: "engagement", label: BUILTIN_FIELD_LABELS.engagement, kind: "ENGAGEMENT", group: "Email activity" },
     ...attributes.map((a) => ({
       id: `attr:${a.key}`,
       label: a.label,
@@ -75,7 +81,7 @@ export function operatorsFor(option: FieldOption): readonly SegmentOperator[] {
 }
 
 /** What kind of value box an operator needs. */
-export type ValueInputKind = "none" | "text" | "number" | "date" | "days" | "statuses" | "list";
+export type ValueInputKind = "none" | "text" | "number" | "date" | "days" | "statuses" | "list" | "campaign";
 
 export function valueInputKind(kind: FieldKind, operator: SegmentOperator): ValueInputKind {
   if (VALUELESS_OPERATORS.has(operator)) return "none";
@@ -92,17 +98,25 @@ export function valueInputKind(kind: FieldKind, operator: SegmentOperator): Valu
       return "list";
     case "BOOLEAN":
       return "none";
+    case "ENGAGEMENT":
+      if (isEngagementDaysOperator(operator)) return "days";
+      if (isEngagementCampaignOperator(operator)) return "campaign";
+      return "none";
   }
 }
+
+/** What the days box starts with for email activity ("opened in the last 30 days"). */
+export const DEFAULT_ENGAGEMENT_DAYS = "30";
 
 export function newDraft(uid: string, option: FieldOption): DraftCondition {
   return {
     uid,
     fieldId: option.id,
     operator: operatorsFor(option)[0],
-    text: "",
+    text: option.kind === "ENGAGEMENT" ? DEFAULT_ENGAGEMENT_DAYS : "",
     statuses: option.kind === "STATUS" ? ["SUBSCRIBED"] : [],
     listId: "",
+    campaignId: "",
   };
 }
 
@@ -115,6 +129,7 @@ export function draftFromCondition(uid: string, c: SegmentCondition): DraftCondi
     text: typeof v === "string" || typeof v === "number" ? String(v) : "",
     statuses: Array.isArray(v) ? v : [],
     listId: c.field === "list" && typeof v === "string" ? v : "",
+    campaignId: c.field === "engagement" && isEngagementCampaignOperator(c.operator) && typeof v === "string" ? v : "",
   };
 }
 
@@ -130,6 +145,8 @@ export function draftToCondition(d: DraftCondition, kind: FieldKind): SegmentCon
       return { ...base, value: d.statuses };
     case "list":
       return { ...base, value: d.listId };
+    case "campaign":
+      return { ...base, value: d.campaignId };
     default:
       // Numbers and days are sent as typed; the checker turns them into numbers.
       return { ...base, value: d.text };

@@ -9,6 +9,7 @@ import { trimMessage } from "@/lib/email/providers/shared";
 import type { ProviderCredentials } from "@/lib/email/provider-configs";
 import type { EmailAddress, OutgoingEmail } from "@/lib/email/types";
 import { buildMergeData, compileTemplate, TemplateError, type CompiledTemplate } from "@/lib/templates/personalize";
+import { trackingUrls } from "@/lib/tracking/links";
 
 // Sends ONE campaign email to ONE recipient that the worker has already
 // "claimed" (status SENDING), then records what happened.
@@ -408,11 +409,17 @@ async function processRecipient(ctx: LaneContext, r: ClaimedRecipient, onHandOff
 
   // 4. Personalize.
   const unsubscribeToken = createRecipientToken(r.id, "unsubscribe");
-  const data = buildMergeData(contact, {
-    unsubscribeUrl: absoluteUrl(`/u/${unsubscribeToken}`), // the page link in the email body
-    viewInBrowserUrl: absoluteUrl(`/v/${createRecipientToken(r.id, "view")}`),
-    workspaceName: content.workspaceName,
-  });
+  const data = {
+    ...buildMergeData(contact, {
+      unsubscribeUrl: absoluteUrl(`/u/${unsubscribeToken}`), // the page link in the email body
+      viewInBrowserUrl: absoluteUrl(`/v/${createRecipientToken(r.id, "view")}`),
+      workspaceName: content.workspaceName,
+    }),
+    // Phase 5: this person's tracking addresses. Launch rewrote links to
+    // {{ tracking.click_base }}/<position> and added an {{ tracking.open_url }}
+    // pixel (only when tracking is on; otherwise these values are unused).
+    tracking: trackingUrls(r.id),
+  };
   let parts: { html: string; text: string; subject: string };
   try {
     parts = content.compiled.render(data);

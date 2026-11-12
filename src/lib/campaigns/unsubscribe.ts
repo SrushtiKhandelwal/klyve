@@ -4,6 +4,7 @@ import { getBrandTheme } from "@/lib/brand-kit";
 import { normalizeEmail } from "@/lib/contacts/common";
 import { createRateLimiter } from "@/lib/media/rate-limit";
 import { verifyRecipientToken } from "@/lib/campaigns/tokens";
+import { recordEvent } from "@/lib/tracking/record";
 import type { Prisma } from "@/generated/prisma/client";
 
 // Unsubscribe (and "oops, resubscribe me") for the PUBLIC links in campaign
@@ -107,7 +108,7 @@ export async function unsubscribeByToken(token: string): Promise<UnsubscribeResu
 
   // One transaction: the contact's status and the recipient's timestamp
   // change together or not at all.
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const recipient = await loadRecipient(tx, recipientId);
     if (!recipient) return { ok: false, reason: "invalid" } as const;
     const { workspace, workspaceId } = recipient.campaign;
@@ -141,6 +142,16 @@ export async function unsubscribeByToken(token: string): Promise<UnsubscribeResu
       workspaceName: workspace.name,
     } as const;
   });
+
+  // A NEW unsubscribe goes into the campaign's report (event + counter).
+  // After the transaction, and never allowed to fail the unsubscribe itself:
+  // the person's request is what matters. recordEvent counts each email once.
+  if (result.ok && !result.alreadyUnsubscribed) {
+    await recordEvent({ recipientId, type: "UNSUBSCRIBED" }).catch((error: unknown) => {
+      console.error("[unsubscribe] couldn't record the unsubscribe event:", error);
+    });
+  }
+  return result;
 }
 
 /**

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAttributeDefinitions, getListOptions } from "@/lib/contacts/lookups";
 import { countSegment, loadRulesContext, validateRulesForWorkspace } from "@/lib/segments/engine";
-import { listSegments } from "@/lib/segments/queries";
+import { listSegmentCampaignOptions, listSegments } from "@/lib/segments/queries";
 import { describeSegmentRules } from "@/lib/segments/rules";
 import { requireActiveWorkspace } from "@/lib/workspace";
 
@@ -46,10 +46,11 @@ function CreateSegmentButton() {
 
 async function SegmentList() {
   const ws = await requireActiveWorkspace();
-  const [segments, attributes, lists, context] = await Promise.all([
+  const [segments, attributes, lists, campaigns, context] = await Promise.all([
     listSegments(ws.id),
     getAttributeDefinitions(ws.id),
     getListOptions(ws.id),
+    listSegmentCampaignOptions(ws.id),
     loadRulesContext(ws.id),
   ]);
 
@@ -74,6 +75,7 @@ async function SegmentList() {
   const lookups = {
     attributeLabels: new Map(attributes.map((a) => [a.key, a.label])),
     listNames: new Map(lists.map((l) => [l.id, l.name])),
+    campaignNames: new Map(campaigns.map((c) => [c.id, c.name])),
   };
 
   // Count every segment live. Field types and lists are loaded once above, so
@@ -106,7 +108,7 @@ async function SegmentList() {
             ) : (
               <p className="mt-0.5 flex items-center gap-1.5 text-sm text-amber-700">
                 <TriangleAlertIcon className="size-3.5" />
-                Needs fixing: uses a field or list that was deleted.
+                Needs fixing: uses a field, list or campaign that was deleted.
               </p>
             )}
             <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500">

@@ -1,0 +1,348 @@
+import "server-only";
+import { absoluteUrl } from "@/lib/app-url";
+import { createRecipientToken } from "@/lib/campaigns/tokens";
+import { decodeTagEntities, personalize, type MergeData } from "@/lib/templates/personalize";
+
+// Click and open tracking, prepared ONCE when a campaign launches.
+//
+//   <a href="https://shop.example/?a=1&amp;b=2">  becomes
+//   <a href="{{ tracking.click_base }}/0">
+//
+// and the original address goes into a CampaignLink row (position 0). When
+// the email is sent, every recipient gets their own click_base
+// (https://app/t/c/<their token>), so a click on /t/c/<token>/0 tells us who
+// clicked which link; then we redirect them to the original address.
+//
+// The open "pixel" is a 1×1 invisible image at {{ tracking.open_url }}.
+//
+// Only the HTML part is changed. The plain-text part keeps the real links:
+// people read and copy those, and long tracking URLs would look suspicious.
+
+/** The merge tags the rewritten email uses (filled per recipient by send-one.ts). */
+export const CLICK_BASE_TAG = "{{ tracking.click_base }}";
+export const OPEN_URL_TAG = "{{ tracking.open_url }}";
+
+/** The open pixel. display:block avoids a stray gap in some email apps. */
+export const OPEN_PIXEL_HTML = `<img src="${OPEN_URL_TAG}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`;
+
+/** The classic 43-byte transparent 1×1 GIF, as base64. */
+export const TRANSPARENT_GIF_BASE64 = "R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
+/** The same image inline, for places where loading it must NOT count as an open. */
+export const TRANSPARENT_GIF_DATA_URI = `data:image/gif;base64,${TRANSPARENT_GIF_BASE64}`;
+
+/** Add this attribute to an <a> to leave it untracked: <a href="…" data-klyve-notrack>. */
+export const NO_TRACK_ATTRIBUTE = "data-klyve-notrack";
+
+/** Safety limits: a normal email has 5–30 links. */
+const MAX_TRACKED_LINKS = 1_000;
+const MAX_URL_LENGTH = 4_000;
+
+export type TrackedLink = { position: number; url: string };
+
+/** The `tracking` merge data for one recipient. */
+export type TrackingMergeData = { click_base: string; open_url: string };
+
+/**
+ * One recipient's tracking addresses. The "track" token is signed, so nobody
+ * can guess another person's or change it into theirs: opens and clicks
+ * can't be faked for someone else.
+ */
+export function trackingUrls(recipientId: string): TrackingMergeData {
+  const token = createRecipientToken(recipientId, "track");
+  return { click_base: absoluteUrl(`/t/c/${token}`), open_url: absoluteUrl(`/t/o/${token}.gif`) };
+}
+
+// ── Which links are tracked ──────────────────────────────────────────────────
+
+/** Links to these must keep working exactly as they are (and aren't "clicks"). */
+const SPECIAL_TAG = /\{\{-?\s*(unsubscribe_url|view_in_browser_url|tracking\.)/;
+/** The whole address is one merge tag, e.g. {{ contact.WEBSITE | safe_url }}. */
+const WHOLE_MERGE_TAG = /^\{\{[^{}]*\}\}$/;
+
+/**
+ * Should a link (its decoded href) be tracked? Web links and whole-merge-tag
+ * links, yes. Never: unsubscribe and view-in-browser links, mailto:/tel:,
+ * "#anchors", or anything else that isn't a web address.
+ */
+export function isTrackableHref(href: string): boolean {
+  const v = href.trim();
+  if (!v || v.length > MAX_URL_LENGTH || SPECIAL_TAG.test(v)) return false;
+  return /^https?:\/\//i.test(v) || WHOLE_MERGE_TAG.test(v);
+}
+
+// ── Rewriting the email at launch ────────────────────────────────────────────
+
+/**
+ * Prepares a campaign's rendered HTML for tracking. Returns the new HTML and
+ * the links to store as CampaignLink rows (empty when clicks aren't tracked).
+ */
+export function prepareTrackedHtml(html: string, options: { trackOpens: boolean; trackClicks: boolean }): { html: string; links: TrackedLink[] } {
+  let out = html;
+  let links: TrackedLink[] = [];
+  if (options.trackClicks) ({ html: out, links } = rewriteLinks(out));
+  if (options.trackOpens) out = addOpenPixel(out);
+  return { html: out, links };
+}
+
+/** Replaces each trackable <a href> with {{ tracking.click_base }}/<position>. */
+export function rewriteLinks(html: string): { html: string; links: TrackedLink[] } {
+  const links: TrackedLink[] = [];
+  const out = mapAnchorTags(html, (tag) => {
+    if (links.length >= MAX_TRACKED_LINKS) return null;
+    const attrs = parseAttributes(tag);
+    if (attrs.some((a) => a.name === NO_TRACK_ATTRIBUTE)) return null;
+    // Browsers use the FIRST href if there are several.
+    const href = attrs.find((a) => a.name === "href");
+    if (!href || href.value === null) return null;
+    const url = decodeAttribute(href.value).trim();
+    if (!isTrackableHref(url)) return null;
+
+    const position = links.length;
+    links.push({ position, url });
+    return tag.slice(0, href.start) + `href="${CLICK_BASE_TAG}/${position}"` + tag.slice(href.end);
+  });
+  return { html: out, links };
+}
+
+/** Puts the open pixel just before </body> (or at the very end if there's none). */
+export function addOpenPixel(html: string): string {
+  let at = -1;
+  for (const m of html.matchAll(/<\/body\s*>/gi)) at = m.index; // the LAST one
+  return at === -1 ? html + OPEN_PIXEL_HTML : html.slice(0, at) + OPEN_PIXEL_HTML + html.slice(at);
+}
+
+/**
+ * The reverse, for TEST emails of an already-launched campaign (there's no
+ * real recipient to track): puts the original links back and drops the pixel.
+ */
+export function untrackHtml(html: string, links: TrackedLink[]): string {
+  const byPosition = new Map(links.map((l) => [l.position, l.url]));
+  const clickRe = new RegExp(`href="${escapeRegExp(CLICK_BASE_TAG)}/(\\d+)"`, "g");
+  return html
+    .replace(clickRe, (whole, n: string) => {
+      const url = byPosition.get(Number(n));
+      return url === undefined ? 'href="#"' : `href="${escapeAttribute(url)}"`;
+    })
+    .split(OPEN_PIXEL_HTML)
+    .join("");
+}
+
+// ── Click time ───────────────────────────────────────────────────────────────
+
+/**
+ * The real address for one recipient: fills any merge tags in the stored
+ * link with their details, then checks it is a plain web address.
+ * Returns null when it isn't (e.g. a contact's "website" is "javascript:…"),
+ * so we NEVER redirect anywhere but http(s).
+ */
+export function personalizeLink(storedUrl: string, data: MergeData): string | null {
+  let url = storedUrl;
+  if (url.includes("{")) {
+    try {
+      // The plain-text engine: a URL isn't HTML, so values mustn't be HTML-escaped.
+      url = personalize({ html: "", text: url, subject: "" }, data).text;
+    } catch {
+      return null; // a broken merge tag (can't normally get past the pre-send checks)
+    }
+  }
+  return safeHttpUrl(url);
+}
+
+/** A normalized http(s) URL, or null. */
+export function safeHttpUrl(value: string): string | null {
+  const v = value.trim();
+  if (!/^https?:\/\//i.test(v) || v.length > MAX_URL_LENGTH * 2) return null;
+  try {
+    const u = new URL(v);
+    if ((u.protocol !== "http:" && u.protocol !== "https:") || !u.hostname) return null;
+    return u.href; // re-serialized: spaces, line breaks etc. are encoded
+  } catch {
+    return null;
+  }
+}
+
+// ── A small, careful HTML scanner ────────────────────────────────────────────
+//
+// Why not a regular expression over the whole email? Because of the cases
+// that break simple patterns: a ">" inside a quoted attribute, <style>
+// blocks, ordinary comments (whose links are NOT live) and MJML's Outlook
+// conditional comments <!--[if mso]> … <![endif]--> (whose content IS live
+// in Outlook). This walks the HTML once, from left to right.
+
+/** Elements whose content is text, not tags. */
+const RAW_TEXT_ELEMENTS = new Set(["style", "script", "title", "textarea", "xmp"]);
+
+/**
+ * Calls `rewrite` with every opening <a …> tag (in order). It returns the new
+ * tag text, or null to keep it. Everything else is copied unchanged.
+ */
+function mapAnchorTags(html: string, rewrite: (tag: string) => string | null): string {
+  let out = "";
+  let copied = 0; // html[0 … copied) is already in `out`
+  let i = 0;
+  while (i < html.length) {
+    const lt = html.indexOf("<", i);
+    if (lt === -1) break;
+
+    if (html.startsWith("<!--", lt)) {
+      const conditional = /^<!--\s*\[if\b[^\]]*\]>/i.exec(html.slice(lt, lt + 200));
+      if (conditional) {
+        // <!--[if mso | IE]> … : Outlook renders what follows, so keep scanning inside.
+        i = lt + conditional[0].length;
+      } else {
+        // A real comment: skip it. (Searching from lt + 2 also ends "<!-->" correctly.)
+        const end = html.indexOf("-->", lt + 2);
+        i = end === -1 ? html.length : end + 3;
+      }
+      continue;
+    }
+    if (html[lt + 1] === "!" || html[lt + 1] === "?") {
+      // <!DOCTYPE …>, <![endif]-->, <?xml …?>
+      const end = html.indexOf(">", lt);
+      i = end === -1 ? html.length : end + 1;
+      continue;
+    }
+
+    const name = /^<(\/?)([a-zA-Z][^\s/>]*)/.exec(html.slice(lt, lt + 64));
+    if (!name) {
+      i = lt + 1; // a lone "<" in text
+      continue;
+    }
+    const end = findTagEnd(html, lt);
+    if (end === -1) break; // unfinished tag at the very end: leave it alone
+    const closing = name[1] === "/";
+    const tagName = name[2].toLowerCase();
+
+    if (!closing && tagName === "a") {
+      const tag = html.slice(lt, end + 1);
+      const replaced = rewrite(tag);
+      if (replaced !== null) {
+        out += html.slice(copied, lt) + replaced;
+        copied = end + 1;
+      }
+    }
+    i = end + 1;
+
+    if (!closing && RAW_TEXT_ELEMENTS.has(tagName)) {
+      // Skip to </style> etc.: CSS like "#outlook a {…}" isn't markup.
+      const close = new RegExp(`</${tagName}[\\s>/]`, "i").exec(html.slice(i));
+      i = close ? i + close.index : html.length;
+    }
+  }
+  return out + html.slice(copied);
+}
+
+/**
+ * Index of the ">" that ends the tag starting at `start`, or -1. A ">" inside
+ * a quoted attribute value doesn't count. Quotes only start a value right
+ * after "=" (as in browsers), so an apostrophe elsewhere can't confuse it.
+ */
+function findTagEnd(html: string, start: number): number {
+  let quote: string | null = null;
+  let lastNonSpace = "";
+  for (let k = start + 1; k < html.length; k++) {
+    const c = html[k];
+    if (quote) {
+      if (c === quote) {
+        quote = null;
+        lastNonSpace = c;
+      }
+      continue;
+    }
+    if (c === ">") return k;
+    if ((c === '"' || c === "'") && lastNonSpace === "=") quote = c;
+    else if (!/\s/.test(c)) lastNonSpace = c;
+  }
+  return -1;
+}
+
+type Attribute = {
+  /** Lowercased name. */
+  name: string;
+  /** The raw value (entities not decoded), or null for a bare attribute. */
+  value: string | null;
+  /** Where the whole attribute (name="value") starts and ends in the tag. */
+  start: number;
+  end: number;
+};
+
+/** The attributes of one tag like <a HREF='x' target=_blank data-x>. */
+function parseAttributes(tag: string): Attribute[] {
+  const attrs: Attribute[] = [];
+  const nameEnd = /^<[^\s/>]*/.exec(tag)![0].length;
+  let k = nameEnd;
+  const isSpace = (c: string | undefined) => c !== undefined && /\s/.test(c);
+  while (k < tag.length) {
+    while (isSpace(tag[k]) || tag[k] === "/") k++;
+    if (k >= tag.length || tag[k] === ">") break;
+
+    const start = k;
+    while (k < tag.length && !isSpace(tag[k]) && tag[k] !== "=" && tag[k] !== ">" && !(tag[k] === "/" && tag[k + 1] === ">")) k++;
+    const name = tag.slice(start, k).toLowerCase();
+    if (k === start) {
+      k++; // a stray character; move on
+      continue;
+    }
+
+    let j = k;
+    while (isSpace(tag[j])) j++;
+    if (tag[j] !== "=") {
+      attrs.push({ name, value: null, start, end: k });
+      continue;
+    }
+    j++;
+    while (isSpace(tag[j])) j++;
+    let value: string;
+    const q = tag[j];
+    if (q === '"' || q === "'") {
+      const close = tag.indexOf(q, j + 1);
+      const valueEnd = close === -1 ? tag.length - 1 : close;
+      value = tag.slice(j + 1, valueEnd);
+      k = close === -1 ? valueEnd : close + 1;
+    } else {
+      let e = j;
+      while (e < tag.length && !isSpace(tag[e]) && tag[e] !== ">") e++;
+      value = tag.slice(j, e);
+      k = e;
+    }
+    attrs.push({ name, value, start, end: k });
+  }
+  return attrs;
+}
+
+// ── Entities ─────────────────────────────────────────────────────────────────
+
+const NAMED_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+/** "&amp;" → "&", "&#39;" → "'", … (the entities our renderer and editors produce). */
+function decodeEntities(s: string): string {
+  return s.replace(/&(#\d{1,7}|#x[0-9a-f]{1,6}|[a-z]{2,8});/gi, (whole, ref: string) => {
+    if (ref[0] !== "#") return NAMED_ENTITIES[ref.toLowerCase()] ?? whole;
+    const code = ref[1] === "x" || ref[1] === "X" ? parseInt(ref.slice(2), 16) : parseInt(ref.slice(1), 10);
+    const valid = code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff);
+    return valid ? String.fromCodePoint(code) : whole;
+  });
+}
+
+/**
+ * An attribute value as the browser would read it. Merge tags inside it are
+ * decoded the way personalize() decodes them (decodeTagEntities), so the
+ * stored link renders exactly like the original href would have.
+ */
+function decodeAttribute(raw: string): string {
+  let out = "";
+  let last = 0;
+  for (const m of raw.matchAll(/\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\}/g)) {
+    out += decodeEntities(raw.slice(last, m.index)) + decodeTagEntities(m[0]);
+    last = m.index + m[0].length;
+  }
+  return out + decodeEntities(raw.slice(last));
+}
+
+function escapeAttribute(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

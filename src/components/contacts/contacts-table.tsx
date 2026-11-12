@@ -11,6 +11,7 @@ import {
   bulkUnsubscribeContacts,
   type ContactActionResult,
 } from "@/app/actions/contacts";
+import type { EngagementBadge } from "@/lib/contacts/activity";
 import type { ContactStatusValue } from "@/lib/contacts/common";
 import type { ListOption } from "@/lib/contacts/lookups";
 import { ContactStatusBadge } from "@/components/contacts/contact-status-badge";
@@ -61,6 +62,16 @@ export type ContactsTableRow = {
   listCount: number;
   addedAt: string; // ISO date, for <time dateTime>
   addedLabel: string; // e.g. "11 Nov 2026"
+  engagement: EngagementBadge;
+  /** Last real open or click, e.g. "11 Nov 2026" (null = never). */
+  lastActivityLabel: string | null;
+};
+
+// How engaged a contact is (see getEngagementForContacts). "Not emailed" shows a dash.
+const ENGAGEMENT_META: Record<Exclude<EngagementBadge, "NOT_EMAILED">, { label: string; className: string }> = {
+  ACTIVE: { label: "Active", className: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
+  INACTIVE: { label: "Inactive 90d", className: "bg-amber-50 text-amber-700 ring-amber-600/20" },
+  NEVER_OPENED: { label: "Never opened", className: "bg-zinc-100 text-zinc-600 ring-zinc-500/20" },
 };
 
 // What the open dialog is about. We copy the selected ids when it opens so
@@ -154,6 +165,7 @@ export function ContactsTable({ rows, lists }: { rows: ContactsTableRow[]; lists
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Engagement</TableHead>
               <TableHead className="text-right">Lists</TableHead>
               <TableHead className="pr-4">Added</TableHead>
             </TableRow>
@@ -185,6 +197,9 @@ export function ContactsTable({ rows, lists }: { rows: ContactsTableRow[]; lists
                   <TableCell className="max-w-64 truncate text-zinc-600">{row.email}</TableCell>
                   <TableCell>
                     <ContactStatusBadge status={row.status} />
+                  </TableCell>
+                  <TableCell>
+                    <EngagementCell row={row} />
                   </TableCell>
                   <TableCell className="text-right text-zinc-600 tabular-nums">{row.listCount}</TableCell>
                   <TableCell className="pr-4 text-zinc-500">
@@ -329,6 +344,24 @@ function ListPickerDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function EngagementCell({ row }: { row: ContactsTableRow }) {
+  if (row.engagement === "NOT_EMAILED") {
+    return <span className="text-zinc-400" title="No campaigns sent to this contact yet">—</span>;
+  }
+  const meta = ENGAGEMENT_META[row.engagement];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset",
+        meta.className,
+      )}
+      title={row.lastActivityLabel ? `Last opened or clicked ${row.lastActivityLabel}` : "Never opened or clicked"}
+    >
+      {meta.label}
+    </span>
   );
 }
 

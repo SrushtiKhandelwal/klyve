@@ -18,6 +18,8 @@ export type DraftPatch = {
   preheader?: string;
   senderId?: string | null;
   audience?: Audience;
+  trackOpens?: boolean;
+  trackClicks?: boolean;
 };
 
 export type SaveState =

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Copy, ExternalLink, Loader2, MoreHorizontal, Trash2, Users } from "lucide-react";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { deleteCampaignAction, duplicateCampaignAction } from "@/app/actions/campaigns";
 import { CampaignStatusBadge } from "@/components/campaigns/campaign-status-badge";
 import { LocalDateTime, RelativeTime } from "@/components/campaigns/local-time";
+import { rowRates } from "@/components/campaigns/rates";
 import { DELETABLE_STATUSES, formatCount, type CampaignRowView } from "@/components/campaigns/types";
 import {
   AlertDialog,
@@ -26,6 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 /**
  * The campaigns list. One row per campaign; on phones each row stacks into a
@@ -44,6 +46,8 @@ export function CampaignsList({ rows }: { rows: CampaignRowView[] }) {
 function CampaignRow({ row }: { row: CampaignRowView }) {
   const href = `/campaigns/${row.id}`;
   const notStarted = row.status === "DRAFT" || row.status === "SCHEDULED";
+  // "—" for drafts, or when that kind of tracking was off (see rates.ts).
+  const rates = rowRates(row);
 
   return (
     <li className="relative flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-zinc-50/70 sm:flex-row sm:items-center sm:gap-6">
@@ -68,16 +72,15 @@ function CampaignRow({ row }: { row: CampaignRowView }) {
       <div className="flex items-center gap-4 text-sm sm:gap-6">
         <CampaignStatusBadge status={row.status} className="hidden w-24 justify-center sm:inline-flex" />
 
-        <div className="flex min-w-24 flex-col">
-          <span className="text-xs text-zinc-500">Recipients</span>
-          <span className="font-medium text-zinc-900 tabular-nums">
-            {notStarted && row.recipientCount === 0 ? "—" : formatCount(row.recipientCount)}
-          </span>
-        </div>
+        {/* Phones: a small 2×2 grid inside the card. Wider screens: one line of columns. */}
+        <dl className="grid flex-1 grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-none sm:items-center sm:gap-6">
+          <RowStat label="Recipients" className="sm:min-w-24">
+            <span className="font-medium text-zinc-900">
+              {notStarted && row.recipientCount === 0 ? "—" : formatCount(row.recipientCount)}
+            </span>
+          </RowStat>
 
-        <div className="flex min-w-28 flex-col">
-          <span className="text-xs text-zinc-500">Sent / failed</span>
-          <span className="tabular-nums">
+          <RowStat label="Sent / failed" className="sm:min-w-28">
             {notStarted ? (
               <span className="text-zinc-400">—</span>
             ) : (
@@ -89,8 +92,16 @@ function CampaignRow({ row }: { row: CampaignRowView }) {
                 </span>
               </>
             )}
-          </span>
-        </div>
+          </RowStat>
+
+          <RowStat label="Open rate" className="sm:min-w-18" title={rates.openTitle}>
+            <span className={rates.open === "—" ? "text-zinc-400" : "font-medium text-zinc-900"}>{rates.open}</span>
+          </RowStat>
+
+          <RowStat label="Click rate" className="sm:min-w-18" title={rates.clickTitle}>
+            <span className={rates.click === "—" ? "text-zinc-400" : "font-medium text-zinc-900"}>{rates.click}</span>
+          </RowStat>
+        </dl>
 
         {/* Above the row's big link, so the menu stays clickable. */}
         <div className="relative z-10 ml-auto">
@@ -98,6 +109,16 @@ function CampaignRow({ row }: { row: CampaignRowView }) {
         </div>
       </div>
     </li>
+  );
+}
+
+/** One small "label over value" column of a campaign row. */
+function RowStat({ label, className, title, children }: { label: string; className?: string; title?: string; children: ReactNode }) {
+  return (
+    <div className={cn("flex min-w-0 flex-col", className)} title={title}>
+      <dt className="text-xs text-zinc-500">{label}</dt>
+      <dd className="tabular-nums">{children}</dd>
+    </div>
   );
 }
 

@@ -9,6 +9,7 @@ import { ContactsTableFilters } from "@/components/contacts/contacts-table-filte
 import { ContactsTablePagination } from "@/components/contacts/contacts-table-pagination";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getEngagementForContacts } from "@/lib/contacts/activity";
 import { getAttributeDefinitions, getListOptions } from "@/lib/contacts/lookups";
 import {
   CONTACTS_PAGE_SIZE,
@@ -100,16 +101,28 @@ async function ContactsContent({ searchParams }: { searchParams: SearchParams })
   if (filters.status) query.status = filters.status.toLowerCase();
   if (filters.listId) query.list = filters.listId;
 
-  const rows: ContactsTableRow[] = result.contacts.map((c) => ({
-    id: c.id,
-    // null when no name is saved; the table then shows "No name".
-    name: [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || null,
-    email: c.email,
-    status: c.status,
-    listCount: c.listCount,
-    addedAt: c.createdAt.toISOString(),
-    addedLabel: dateFormat.format(c.createdAt),
-  }));
+  // Engagement badges for this page only: one aggregate query.
+  const engagement = await getEngagementForContacts(
+    ws.id,
+    result.contacts.map((c) => c.id),
+  );
+
+  const rows: ContactsTableRow[] = result.contacts.map((c) => {
+    const activity = engagement.get(c.id);
+    return {
+      id: c.id,
+      // null when no name is saved; the table then shows "No name".
+      name: [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || null,
+      email: c.email,
+      status: c.status,
+      listCount: c.listCount,
+      addedAt: c.createdAt.toISOString(),
+      addedLabel: dateFormat.format(c.createdAt),
+      // Contacts never sent a campaign have no row in the map.
+      engagement: activity?.badge ?? "NOT_EMAILED",
+      lastActivityLabel: activity?.lastActivityAt ? dateFormat.format(activity.lastActivityAt) : null,
+    };
+  });
 
   return (
     <>

@@ -5,6 +5,8 @@ import type { ContactStatusValue } from "@/lib/contacts/common";
 import {
   ATTRIBUTE_KEY_PATTERN,
   checkSegmentRules,
+  isEngagementCampaignOperator,
+  isEngagementDaysOperator,
   type ResolvedCondition,
   type RulesContext,
   type SegmentRules,
@@ -36,6 +38,9 @@ import {
 // - A NUMBER field only counts JSON numbers (or text that looks like a number).
 //   A DATE field only counts "YYYY-MM-DD" text. Anything else counts as empty.
 // - Dates are compared as calendar days in UTC.
+// - "Email activity" conditions have their own exact meanings, written next
+//   to ENGAGEMENT_DAYS_OPERATORS in rules.ts (e.g. "didn't open campaign X"
+//   only matches people who received X).
 
 /** Rules that passed validation for one workspace. Only this file can create them. */
 class CheckedSegmentRules {
@@ -62,15 +67,27 @@ export class InvalidSegmentRulesError extends Error {
 /** A workspace's field types and list ids, loaded once to check many segments. */
 export type WorkspaceRulesContext = RulesContext & { workspaceId: string };
 
+/**
+ * Campaigns that "opened campaign X" style conditions may point at: ones that
+ * actually went out (or are going out). Drafts/scheduled ones have no
+ * recipients yet, so a condition on them would silently match nobody.
+ */
+export const ENGAGEMENT_CAMPAIGN_STATUSES = ["SENT", "SENDING", "PAUSED"] as const;
+
 export async function loadRulesContext(workspaceId: string): Promise<WorkspaceRulesContext> {
-  const [attributes, lists] = await Promise.all([
+  const [attributes, lists, campaigns] = await Promise.all([
     db.contactAttribute.findMany({ where: { workspaceId }, select: { key: true, type: true } }),
     db.contactList.findMany({ where: { workspaceId }, select: { id: true } }),
+    db.campaign.findMany({
+      where: { workspaceId, status: { in: [...ENGAGEMENT_CAMPAIGN_STATUSES] } },
+      select: { id: true },
+    }),
   ]);
   return {
     workspaceId,
     attributeTypes: new Map(attributes.map((a) => [a.key, a.type])),
     listIds: new Set(lists.map((l) => l.id)),
+    campaignIds: new Set(campaigns.map((c) => c.id)),
   };
 }
 
@@ -182,13 +199,15 @@ function whereClause(checked: CheckedSegmentRules): Prisma.Sql {
   const workspace = Prisma.sql`c."workspaceId" = ${checked.workspaceId}`;
   if (checked.conditions.length === 0) return workspace; // no conditions = everyone
 
-  const parts = checked.conditions.map((c) => Prisma.sql`(${conditionSql(c)})`);
+  const parts = checked.conditions.map((c) => Prisma.sql`(${conditionSql(c, checked.workspaceId)})`);
   const joined = Prisma.join(parts, checked.rules.match === "all" ? " AND " : " OR ");
   return Prisma.sql`${workspace} AND (${joined})`;
 }
 
-function conditionSql(c: ResolvedCondition): Prisma.Sql {
+function conditionSql(c: ResolvedCondition, workspaceId: string): Prisma.Sql {
   switch (c.kind) {
+    case "ENGAGEMENT":
+      return engagementSql(c, workspaceId);
     case "TEXT":
       return textSql(c);
     case "NUMBER":
@@ -404,6 +423,108 @@ function listSql(c: ResolvedCondition): Prisma.Sql {
     WHERE lm."contactId" = c.id AND lm."listId" = ${stringValue(c)}
   )`;
   return c.operator === "in_list" ? member : Prisma.sql`NOT ${member}`;
+}
+
+// ── Email activity (opens, clicks, bounces...) ────────────────────────────
+//
+// Where the data lives:
+//  - campaign_recipient: one row per (campaign, contact) with its send status.
+//    It has no workspaceId, so we always JOIN campaign and check ITS workspace.
+//  - email_event: every open/click/bounce/... with an isBot flag. We read
+//    opens and clicks from here (isBot = false only) rather than from the
+//    recipient's firstOpenedAt, because "opened in the last 30 days" must see
+//    a REPEAT open from last week, not just the first open months ago.
+// The exact meaning of each operator is documented in rules.ts.
+
+/** Event types that count as "opened": a click proves they saw the email too. */
+const OPEN_TYPES = Prisma.sql`('OPENED'::"EmailEventType", 'CLICKED'::"EmailEventType")`;
+const CLICK_TYPES = Prisma.sql`('CLICKED'::"EmailEventType")`;
+
+function engagementSql(c: ResolvedCondition, workspaceId: string): Prisma.Sql {
+  /** The contact was sent at least one campaign of this workspace (plus `extra` conditions on `cr`). */
+  const received = (extra: Prisma.Sql = Prisma.empty) => Prisma.sql`EXISTS (
+    SELECT 1 FROM campaign_recipient cr
+    JOIN campaign ca ON ca.id = cr."campaignId"
+    WHERE cr."contactId" = c.id
+      AND ca."workspaceId" = ${workspaceId}
+      AND cr.status = 'SENT'::"RecipientStatus"
+      ${extra}
+  )`;
+
+  /** A human event of these types on the recipient row `cr` (from received()). */
+  const humanEventOnThisEmail = (types: Prisma.Sql) => Prisma.sql`EXISTS (
+    SELECT 1 FROM email_event e
+    WHERE e."recipientId" = cr.id AND e.type IN ${types} AND e."isBot" = false
+  )`;
+
+  /** A human event of these types, on any email of this workspace, optionally since a time. */
+  const humanEventOnAnyEmail = (types: Prisma.Sql, since?: Prisma.Sql) => Prisma.sql`EXISTS (
+    SELECT 1 FROM email_event e
+    JOIN campaign_recipient er ON er.id = e."recipientId"
+    WHERE e."workspaceId" = ${workspaceId}
+      AND er."contactId" = c.id
+      AND e.type IN ${types}
+      AND e."isBot" = false
+      ${since ? Prisma.sql`AND e."createdAt" >= ${since}` : Prisma.empty}
+  )`;
+
+  /** Bounced / complained on any email (the recipient column, or the event as a fallback). */
+  const everHad = (column: Prisma.Sql, type: Prisma.Sql) => Prisma.sql`EXISTS (
+    SELECT 1 FROM campaign_recipient cr
+    JOIN campaign ca ON ca.id = cr."campaignId"
+    WHERE cr."contactId" = c.id
+      AND ca."workspaceId" = ${workspaceId}
+      AND (${column} IS NOT NULL OR EXISTS (
+        SELECT 1 FROM email_event e WHERE e."recipientId" = cr.id AND e.type = ${type}
+      ))
+  )`;
+
+  if (isEngagementDaysOperator(c.operator)) {
+    // The last N x 24 hours (timestamps are stored in UTC), like "Date added".
+    const since = Prisma.sql`((now() AT TIME ZONE 'UTC') - make_interval(days => ${numberValue(c)}::int))`;
+    const sentInWindow = received(Prisma.sql`AND cr."sentAt" >= ${since}`);
+    switch (c.operator) {
+      case "opened_any_in_last_days":
+        return humanEventOnAnyEmail(OPEN_TYPES, since);
+      case "not_opened_any_in_last_days":
+        return Prisma.sql`${sentInWindow} AND NOT ${humanEventOnAnyEmail(OPEN_TYPES, since)}`;
+      case "clicked_any_in_last_days":
+        return humanEventOnAnyEmail(CLICK_TYPES, since);
+      case "not_clicked_any_in_last_days":
+        return Prisma.sql`${sentInWindow} AND NOT ${humanEventOnAnyEmail(CLICK_TYPES, since)}`;
+    }
+  }
+
+  if (isEngagementCampaignOperator(c.operator)) {
+    // There is at most one recipient row per (campaign, contact), so
+    // "a SENT row without an open" means exactly "received it, didn't open".
+    const campaign = Prisma.sql`AND cr."campaignId" = ${stringValue(c)}`;
+    switch (c.operator) {
+      case "received_campaign":
+        return received(campaign);
+      case "not_received_campaign":
+        return Prisma.sql`NOT ${received(campaign)}`;
+      case "opened_campaign":
+        return received(Prisma.sql`${campaign} AND ${humanEventOnThisEmail(OPEN_TYPES)}`);
+      case "not_opened_campaign":
+        return received(Prisma.sql`${campaign} AND NOT ${humanEventOnThisEmail(OPEN_TYPES)}`);
+      case "clicked_campaign":
+        return received(Prisma.sql`${campaign} AND ${humanEventOnThisEmail(CLICK_TYPES)}`);
+      case "not_clicked_campaign":
+        return received(Prisma.sql`${campaign} AND NOT ${humanEventOnThisEmail(CLICK_TYPES)}`);
+    }
+  }
+
+  switch (c.operator) {
+    case "never_opened_any":
+      return Prisma.sql`${received()} AND NOT ${humanEventOnAnyEmail(OPEN_TYPES)}`;
+    case "bounced_ever":
+      return everHad(Prisma.sql`cr."bouncedAt"`, Prisma.sql`'BOUNCED'::"EmailEventType"`);
+    case "complained_ever":
+      return everHad(Prisma.sql`cr."complainedAt"`, Prisma.sql`'COMPLAINED'::"EmailEventType"`);
+    default:
+      throw new Error(`Unsupported email activity operator: ${c.operator}`);
+  }
 }
 
 function clampInt(n: number, min: number, max: number): number {
