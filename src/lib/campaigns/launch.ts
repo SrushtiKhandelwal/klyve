@@ -256,7 +256,8 @@ async function explain(workspaceId: string, campaignId: string, action: string):
 /** SENDING → PAUSED. The worker stops picking up its recipients. */
 export async function pauseCampaign(ws: WorkspaceArg, campaignId: string): Promise<StateResult> {
   const workspaceId = wsId(ws);
-  const r = await db.campaign.updateMany({ where: { id: campaignId, workspaceId, status: "SENDING" }, data: { status: "PAUSED" } });
+  // Automation emails are paused/resumed through their automation, never here.
+  const r = await db.campaign.updateMany({ where: { id: campaignId, workspaceId, kind: "REGULAR", status: "SENDING" }, data: { status: "PAUSED" } });
   return r.count === 1 ? { ok: true } : explain(workspaceId, campaignId, "paused");
 }
 
@@ -291,7 +292,7 @@ export async function resumeCampaign(ws: WorkspaceArg, campaignId: string): Prom
   }
 
   const r = await db.campaign.updateMany({
-    where: { id: campaignId, workspaceId, status: "PAUSED" },
+    where: { id: campaignId, workspaceId, kind: "REGULAR", status: "PAUSED" },
     data: { status: "SENDING", lastError: null, providerId: provider.id },
   });
   return r.count === 1 ? { ok: true } : explain(workspaceId, campaignId, "resumed");
@@ -301,7 +302,7 @@ export async function resumeCampaign(ws: WorkspaceArg, campaignId: string): Prom
 export async function cancelCampaign(ws: WorkspaceArg, campaignId: string): Promise<StateResult> {
   const workspaceId = wsId(ws);
   const r = await db.campaign.updateMany({
-    where: { id: campaignId, workspaceId, status: { in: ["SCHEDULED", "SENDING", "PAUSED"] } },
+    where: { id: campaignId, workspaceId, kind: "REGULAR", status: { in: ["SCHEDULED", "SENDING", "PAUSED"] } },
     data: { status: "CANCELLED", finishedAt: new Date() },
   });
   if (r.count !== 1) return explain(workspaceId, campaignId, "cancelled");

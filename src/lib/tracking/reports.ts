@@ -324,6 +324,12 @@ export type WorkspacePerformance = {
  * Totals for the last `days` days, compared with the `days` before that.
  * A campaign belongs to the period in which it STARTED sending.
  *
+ * REGULAR campaigns only. An automation's emails are hidden campaigns that
+ * start when the automation is turned on and keep sending for months, so
+ * "the period it started in" would pile all of their sends into one month.
+ * They have their own report on the automation page. (Same rule as the
+ * campaigns list and the dashboard's recent campaigns.)
+ *
  * "Average" rates are weighted by size (all opens ÷ all delivered emails),
  * which is what the totals really were; a mean of per-campaign rates would let
  * a 10-person test count as much as a 10,000-person newsletter. Campaigns with
@@ -338,7 +344,7 @@ export async function getWorkspacePerformance(ws: WorkspaceArg, options: { days?
   const previousStart = new Date(now.getTime() - 2 * days * DAY);
 
   const rows = await db.campaign.findMany({
-    where: { workspaceId, startedAt: { gte: previousStart, lt: now }, sentCount: { gt: 0 } },
+    where: { workspaceId, kind: "REGULAR", startedAt: { gte: previousStart, lt: now }, sentCount: { gt: 0 } },
     select: {
       startedAt: true,
       trackOpens: true,

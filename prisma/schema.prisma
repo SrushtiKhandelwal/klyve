@@ -187,6 +187,7 @@ model Contact {
   @@unique([workspaceId, email])
   @@index([workspaceId, createdAt])
   @@index([workspaceId, status])
+  @@index([workspaceId, confirmedAt]) // automation triggers: "confirmed since…"
   @@map("contact")
 }
 
@@ -221,6 +222,7 @@ model ListMembership {
 
   @@id([listId, contactId])
   @@index([contactId])
+  @@index([listId, addedAt]) // automation "joined list" trigger scans
   @@map("list_membership")
 }
 

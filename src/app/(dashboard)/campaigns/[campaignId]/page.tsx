@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getAudienceCountAction, getAudienceSourcesAction } from "@/app/actions/campaigns";
 import type { AudienceSources } from "@/components/campaigns/setup/recipients-editor";
 import { CampaignSetup } from "@/components/campaigns/setup/campaign-setup";
@@ -46,6 +46,8 @@ async function CampaignContent({ params }: { params: Params }) {
   // Filtered by workspace: another workspace's id is "not found", never shown.
   const campaign = await getCampaign(ws.id, campaignId);
   if (!campaign) notFound();
+  // An automation email (the deliverability page links here) is managed on its automation.
+  if (campaign.kind === "AUTOMATION") redirect(campaign.automationId ? `/automations/${campaign.automationId}` : "/automations");
 
   const canDelete = canDeleteCampaign({ userId: user.id, role: ws.role }, campaign.createdById);
 

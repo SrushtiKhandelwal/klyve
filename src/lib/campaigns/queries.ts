@@ -119,7 +119,11 @@ const ENGAGEMENT_SELECT = {
 
 const senderLabel = (s: { name: string; email: string } | null) => (s ? `${s.name} <${s.email}>` : null);
 
-/** Campaigns, newest first. `q` searches name and subject; `status` filters. */
+/**
+ * Campaigns, newest first. `q` searches name and subject; `status` filters.
+ * Only REGULAR campaigns: an automation's emails are hidden campaigns
+ * (kind AUTOMATION) that belong on the automation's own report, not here.
+ */
 export async function listCampaigns(
   workspaceId: string,
   options: { q?: string; status?: string } = {},
@@ -128,6 +132,7 @@ export async function listCampaigns(
   const rows = await db.campaign.findMany({
     where: {
       workspaceId,
+      kind: "REGULAR",
       ...(isCampaignStatus(options.status) ? { status: options.status } : {}),
       ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { subject: { contains: q, mode: "insensitive" } }] } : {}),
     },
@@ -155,6 +160,14 @@ export async function listCampaigns(
 }
 
 export type CampaignDetail = Omit<CampaignListItem, "senderLabel"> & {
+  /**
+   * AUTOMATION = the hidden email of an automation step (Phase 8). Still
+   * reachable by id (e.g. its report), but it must be shown READ-ONLY: it is
+   * started, paused and edited only through its automation.
+   */
+  kind: "REGULAR" | "AUTOMATION";
+  /** The automation it belongs to (AUTOMATION kind only). */
+  automationId: string | null;
   preheader: string;
   audience: Audience;
   /** The campaign's own design; null if it has none yet or it can't be read. */
@@ -182,6 +195,8 @@ export async function getCampaign(workspaceId: string, campaignId: string): Prom
       id: true,
       name: true,
       status: true,
+      kind: true,
+      automationId: true,
       subject: true,
       preheader: true,
       audience: true,

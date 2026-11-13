@@ -8,6 +8,10 @@ import {
   ContactActivityCard,
   ContactActivityCardSkeleton,
 } from "@/components/contacts/activity/contact-activity-card";
+import {
+  AutomationRunsCard,
+  AutomationRunsCardSkeleton,
+} from "@/components/contacts/automation-runs-card";
 import { ContactDeleteButton } from "@/components/contacts/contact-delete-button";
 import { ContactEditForm } from "@/components/contacts/contact-edit-form";
 import { ContactListsCard } from "@/components/contacts/contact-lists-card";
@@ -120,6 +124,13 @@ async function ContactDetails({ params }: { params: Params }) {
             {/* Streams in on its own, so the rest of the page doesn't wait for it. */}
             <Suspense fallback={<ContactActivityCardSkeleton />}>
               <ContactActivityCard workspaceId={ws.id} contactId={contact.id} />
+            </Suspense>
+          </Card>
+
+          <Card title="Automations">
+            {/* Streams in on its own too: the runs, their history and "Add to automation". */}
+            <Suspense fallback={<AutomationRunsCardSkeleton />}>
+              <AutomationRunsCard workspaceId={ws.id} contactId={contact.id} />
             </Suspense>
           </Card>
         </div>

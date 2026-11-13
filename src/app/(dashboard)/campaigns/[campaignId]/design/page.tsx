@@ -37,6 +37,8 @@ async function DesignContent({ params }: { params: Params }) {
   // Filtered by workspace: another workspace's id is "not found", never shown.
   const campaign = await getCampaign(ws.id, campaignId);
   if (!campaign) notFound();
+  // An automation email (the deliverability page links here) is managed on its automation.
+  if (campaign.kind === "AUTOMATION") redirect(campaign.automationId ? `/automations/${campaign.automationId}` : "/automations");
   // Once scheduled or sent, the design is frozen: show the status page instead.
   if (campaign.status !== "DRAFT") redirect(`/campaigns/${campaign.id}`);
 

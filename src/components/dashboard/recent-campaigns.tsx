@@ -47,7 +47,7 @@ export async function RecentCampaigns() {
   // Checks login + workspace right next to the data; only THIS workspace's campaigns.
   const ws = await requireActiveWorkspace();
   const campaigns: Row[] = await db.campaign.findMany({
-    where: { workspaceId: ws.id },
+    where: { workspaceId: ws.id, kind: "REGULAR" }, // automation emails live on their automation
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: SHOWN,
     select: {

@@ -36,7 +36,7 @@ export type SegmentCampaignOption = {
  */
 export async function listSegmentCampaignOptions(workspaceId: string): Promise<SegmentCampaignOption[]> {
   const rows = await db.campaign.findMany({
-    where: { workspaceId, status: { in: [...ENGAGEMENT_CAMPAIGN_STATUSES] } },
+    where: { workspaceId, kind: "REGULAR", status: { in: [...ENGAGEMENT_CAMPAIGN_STATUSES] } },
     orderBy: [{ startedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
     select: { id: true, name: true, startedAt: true },
     // Plenty for a picker; very old campaigns are rarely targeted.

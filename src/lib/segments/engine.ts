@@ -79,7 +79,7 @@ export async function loadRulesContext(workspaceId: string): Promise<WorkspaceRu
     db.contactAttribute.findMany({ where: { workspaceId }, select: { key: true, type: true } }),
     db.contactList.findMany({ where: { workspaceId }, select: { id: true } }),
     db.campaign.findMany({
-      where: { workspaceId, status: { in: [...ENGAGEMENT_CAMPAIGN_STATUSES] } },
+      where: { workspaceId, kind: "REGULAR", status: { in: [...ENGAGEMENT_CAMPAIGN_STATUSES] } },
       select: { id: true },
     }),
   ]);

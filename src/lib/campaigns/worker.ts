@@ -14,6 +14,8 @@ import {
   type LaneContext,
   type LaneProvider,
 } from "@/lib/campaigns/send-one";
+import { runAutomationTick } from "@/lib/automations/engine";
+import { runTriggerScan } from "@/lib/automations/triggers";
 import { runHealthChecks } from "@/lib/deliverability/health";
 import { loadProvider, ProviderCredentialsError } from "@/lib/email/stored-provider";
 
@@ -26,6 +28,12 @@ import { loadProvider, ProviderCredentialsError } from "@/lib/email/stored-provi
 //   1. starts SCHEDULED campaigns whose time has come
 //   2. cleans up emails stuck in SENDING after a crash ("status unknown")
 //   3. pauses campaigns whose provider was deleted
+//   3b. AUTOMATIONS (Phase 8): enrols people whose trigger happened
+//      (src/lib/automations/triggers.ts), then moves people through their
+//      steps (src/lib/automations/engine.ts). An automation's "Send email"
+//      step just adds a recipient row to its hidden campaign (kind
+//      AUTOMATION, always SENDING), so the lanes below send it like any
+//      other campaign email: same guarantees, same speed limits.
 //   4. starts one "lane" per sending provider: a lane claims a batch of
 //      queued emails and sends them at the provider's speed (see below)
 //   5. checks the sending health of campaigns that sent emails: one whose
@@ -177,6 +185,10 @@ export type TickSummary = {
   staleFailed: number;
   lanesRun: number;
   completed: number;
+  /** People who entered an automation this tick. */
+  automationEnrolled: number;
+  /** Automation runs worked on this tick. */
+  automationRuns: number;
 };
 
 /**
@@ -213,13 +225,17 @@ async function tick(fixedNow: Date | undefined, waitForLanes: boolean): Promise<
   const staleFailed = await step("stale claims", 0, () => failStaleClaims(now));
   await step("orphans", undefined, () => pauseCampaignsWithoutProvider());
   await step("rematerialize", undefined, () => rematerializeEmptyCampaigns(now));
+  // Automations before the lanes, so a just-queued welcome email goes out in this same tick.
+  // Both never throw for one automation's/run's problem; step() catches anything else.
+  const automationEnrolled = await step("automation triggers", 0, () => runTriggerScan(now));
+  const automationRuns = await step("automation runs", 0, async () => (await runAutomationTick(now)).claimed);
   const lanes = await step("lanes", [] as Promise<void>[], () => startLanes(fixedNow, now));
   if (waitForLanes) await Promise.allSettled(lanes);
   // Before completion, so a campaign that just turned unhealthy is paused, not finished.
   // runHealthChecks never throws, and step() would catch it anyway.
   await step("sending health", undefined, () => runHealthChecks());
   const completed = await step("completion", 0, () => completeFinishedCampaigns(fixedNow ?? new Date()));
-  return { scheduledStarted, staleFailed, lanesRun: lanes.length, completed };
+  return { scheduledStarted, staleFailed, lanesRun: lanes.length, completed, automationEnrolled, automationRuns };
 }
 
 // 1. Scheduled campaigns whose time has come → SENDING, then create their recipient rows.
