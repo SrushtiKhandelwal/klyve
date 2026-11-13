@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { recordEvent } from "@/lib/tracking/record";
+import { recordTransactionalEvent } from "@/lib/transactional/events";
 import type { WebhookEvent } from "./types";
 
 // Matches webhook events to the emails we sent, then records them.
@@ -11,6 +12,13 @@ import type { WebhookEvent } from "./types";
 //   campaign.workspaceId = this provider's workspace.
 // An event naming someone else's recipient (a guessed or copied id) simply
 // isn't found, and is counted as "ignored". It can never touch their data.
+//
+// TRANSACTIONAL EMAILS (Phase 9): they carry no campaign/recipient ids, so an
+// event that matches no campaign email is looked up in transactional_email by
+// the provider's message id (same provider + workspace guard). Bounces and
+// complaints update it (src/lib/transactional/events.ts); deliveries are
+// ignored, since transactional email has no tracking in v1. Provider message
+// ids are unique, so one id can't match both a campaign and a transactional email.
 
 export type ProcessResult = {
   /** Events we understood in the request. */
@@ -25,6 +33,7 @@ export type ProcessResult = {
 
 type Owner = { id: string; workspaceId: string };
 type Match = { id: string; campaignId: string };
+type TransactionalMatch = { id: string };
 
 export async function processWebhookEvents(provider: Owner, events: WebhookEvent[]): Promise<ProcessResult> {
   const result: ProcessResult = { received: events.length, recorded: 0, duplicates: 0, ignored: 0 };
@@ -58,6 +67,17 @@ export async function processWebhookEvents(provider: Owner, events: WebhookEvent
     for (const r of rows) if (r.providerMessageId && !byMessageId.has(r.providerMessageId)) byMessageId.set(r.providerMessageId, r);
   }
 
+  // Still unmatched → maybe a transactional email of this provider.
+  const leftoverMessageIds = unresolvedMessageIds.filter((m) => !byMessageId.has(m));
+  const transactionalByMessageId = new Map<string, TransactionalMatch>();
+  if (leftoverMessageIds.length) {
+    const rows = await db.transactionalEmail.findMany({
+      where: { providerMessageId: { in: leftoverMessageIds }, ...sameProvider },
+      select: { id: true, providerMessageId: true },
+    });
+    for (const r of rows) if (r.providerMessageId) transactionalByMessageId.set(r.providerMessageId, { id: r.id });
+  }
+
   // One at a time, in the order the provider sent them (e.g. delivered, then complained).
   for (const e of events) {
     let match = e.recipientId ? byId.get(e.recipientId) : undefined;
@@ -65,7 +85,9 @@ export async function processWebhookEvents(provider: Owner, events: WebhookEvent
     if (match && e.campaignId && e.campaignId !== match.campaignId) match = undefined;
     if (!match && e.messageId) match = byMessageId.get(e.messageId);
     if (!match) {
-      result.ignored++;
+      const tx = e.messageId ? transactionalByMessageId.get(e.messageId) : undefined;
+      const outcome = tx ? await recordTransactionalEvent(provider, tx.id, e) : "ignored";
+      result[outcome]++;
       continue;
     }
 

@@ -48,7 +48,7 @@ const email = z.string().trim().toLowerCase().email().max(254);
 const displayName = z
   .string()
   .trim()
-  .max(100)
+  .max(70) // same limit as sender names (senderNameSchema)
   // A name must not be able to add email headers.
   .refine((v) => !/[\r\n]/.test(v), "Names can't contain line breaks.");
 
@@ -147,6 +147,7 @@ export const API_ERROR_CODES = {
   unauthorized: 401, // missing, wrong or revoked API key
   forbidden: 403, // e.g. the account's email isn't verified
   not_found: 404, // unknown email / template / contact id
+  method_not_allowed: 405, // e.g. DELETE on an endpoint that doesn't allow it (Allow header lists what does)
   sender_not_verified: 422, // "from" isn't a verified sender of this workspace
   no_provider: 422, // no working sending provider
   idempotency_conflict: 409, // same Idempotency-Key, different body

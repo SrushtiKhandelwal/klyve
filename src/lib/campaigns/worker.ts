@@ -18,6 +18,7 @@ import { runAutomationTick } from "@/lib/automations/engine";
 import { runTriggerScan } from "@/lib/automations/triggers";
 import { runHealthChecks } from "@/lib/deliverability/health";
 import { loadProvider, ProviderCredentialsError } from "@/lib/email/stored-provider";
+import { runTransactionalTick, transactionalWorkInFlight, type TransactionalTickSummary } from "@/lib/transactional/worker";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The campaign sending worker: the engine that actually delivers campaigns.
@@ -25,6 +26,10 @@ import { loadProvider, ProviderCredentialsError } from "@/lib/email/stored-provi
 // It runs in the background inside the server process (started from
 // src/instrumentation.ts) and "ticks" about once a second. Each tick:
 //
+//   0. TRANSACTIONAL email first (Phase 9: receipts, password resets sent
+//      through the API), so it never waits behind a big campaign. Its own
+//      queue, retries and clean-up live in src/lib/transactional/worker.ts;
+//      it shares the providers' speed limiters and daily caps with campaigns.
 //   1. starts SCHEDULED campaigns whose time has come
 //   2. cleans up emails stuck in SENDING after a crash ("status unknown")
 //   3. pauses campaigns whose provider was deleted
@@ -170,7 +175,7 @@ export async function stopCampaignWorker(): Promise<void> {
   const s = state();
   s.stopping = true;
   s.wake?.();
-  const pending = [s.loop, s.tickChain, ...s.lanes.values()].filter(Boolean);
+  const pending = [s.loop, s.tickChain, ...s.lanes.values(), ...transactionalWorkInFlight()].filter(Boolean);
   await Promise.race([
     Promise.allSettled(pending),
     new Promise((resolve) => setTimeout(resolve, 20_000).unref?.()),
@@ -189,6 +194,8 @@ export type TickSummary = {
   automationEnrolled: number;
   /** Automation runs worked on this tick. */
   automationRuns: number;
+  /** The transactional step (null if it failed unexpectedly). */
+  transactional: TransactionalTickSummary | null;
 };
 
 /**
@@ -221,6 +228,11 @@ async function step<T>(name: string, fallback: T, fn: () => Promise<T>): Promise
 
 async function tick(fixedNow: Date | undefined, waitForLanes: boolean): Promise<TickSummary> {
   const now = fixedNow ?? new Date();
+  // Transactional first: it has priority. Its lanes run in the background like
+  // the campaign lanes (awaited only by runWorkerTick). It never throws; step() is a second net.
+  const transactional = await step("transactional", null, () =>
+    runTransactionalTick(fixedNow, { wait: waitForLanes, isStopping: () => state().stopping }),
+  );
   const scheduledStarted = await step("start scheduled", 0, () => startDueCampaigns(now));
   const staleFailed = await step("stale claims", 0, () => failStaleClaims(now));
   await step("orphans", undefined, () => pauseCampaignsWithoutProvider());
@@ -235,7 +247,7 @@ async function tick(fixedNow: Date | undefined, waitForLanes: boolean): Promise<
   // runHealthChecks never throws, and step() would catch it anyway.
   await step("sending health", undefined, () => runHealthChecks());
   const completed = await step("completion", 0, () => completeFinishedCampaigns(fixedNow ?? new Date()));
-  return { scheduledStarted, staleFailed, lanesRun: lanes.length, completed, automationEnrolled, automationRuns };
+  return { scheduledStarted, staleFailed, lanesRun: lanes.length, completed, automationEnrolled, automationRuns, transactional };
 }
 
 // 1. Scheduled campaigns whose time has come → SENDING, then create their recipient rows.

@@ -377,6 +377,8 @@ export type AddPendingInput = {
   source: string;
   ip?: string | null;
   userAgent?: string | null;
+  /** Extra facts for the consent record, e.g. { apiKeyId } for API sign-ups. */
+  detail?: Record<string, unknown>;
 };
 
 export type AddPendingResult = {
@@ -451,7 +453,7 @@ export async function addPendingContact(ws: WorkspaceRef, input: AddPendingInput
         type: "SUBSCRIBED",
         source: input.source,
         ...meta,
-        detail: { lists: listIds, doubleOptIn: workspace.doubleOptIn, ...(status === "PENDING" ? { awaitingConfirmation: true } : {}) },
+        detail: { ...input.detail, lists: listIds, doubleOptIn: workspace.doubleOptIn, ...(status === "PENDING" ? { awaitingConfirmation: true } : {}) },
       });
       if (status === "SUBSCRIBED") return { contactId: contact.id, created: true, sent: false };
       const sent = await sendOptInEmail(workspaceId, contact.id, { source: input.source, ...meta });
@@ -497,7 +499,7 @@ export async function addPendingContact(ws: WorkspaceRef, input: AddPendingInput
     // Double opt-in was switched off since: this new sign-up is enough.
     const changed = await db.contact.updateMany({ where: { id: existing.id, workspaceId, status: "PENDING" }, data: { status: "SUBSCRIBED" } });
     if (changed.count) {
-      await recordConsent({ workspaceId, contactId: existing.id, email, type: "SUBSCRIBED", source: input.source, ...meta, detail: { lists: listIds, doubleOptIn: false } });
+      await recordConsent({ workspaceId, contactId: existing.id, email, type: "SUBSCRIBED", source: input.source, ...meta, detail: { ...input.detail, lists: listIds, doubleOptIn: false } });
     }
     return { contactId: existing.id, created: false, sent: false };
   }

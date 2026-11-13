@@ -16,6 +16,10 @@ import { addSuppressions, suppressionKeyForErasure } from "@/lib/suppression";
 //  - Their address, IP hash and device in the consent record (replaced by a
 //    one-way hash of the address).
 //  - Any plain-text entry for their address on the suppression list.
+//  - Every transactional email (Phase 9: receipts, password resets...) this
+//    workspace sent to their address, including emails sent before they
+//    were a contact (rows without a contactId). Those rows are DELETED, not
+//    anonymised: they are a log, not part of any report.
 //
 // WHAT IS KEPT (no personal data left in it)
 //  - The anonymous campaign rows and events, so campaign reports and
@@ -42,7 +46,14 @@ export type EraseOptions = {
 };
 
 export type EraseResult =
-  | { ok: true; campaignEmailsAnonymized: number; eventsCleaned: number; consentEventsHashed: number; suppressed: boolean }
+  | {
+      ok: true;
+      campaignEmailsAnonymized: number;
+      eventsCleaned: number;
+      consentEventsHashed: number;
+      transactionalEmailsDeleted: number;
+      suppressed: boolean;
+    }
   | { ok: false; error: string };
 
 /** Event detail keys that never hold personal data; everything else is dropped. */
@@ -77,6 +88,11 @@ export async function eraseContact(workspaceId: string, contactId: string, opts:
         data: { email: hashed, ipHash: null, userAgent: null },
       });
 
+      // Transactional emails to this address (stored lower-cased, like contact emails).
+      const transactional = await tx.transactionalEmail.deleteMany({
+        where: { workspaceId, OR: [{ contactId: contact.id }, { toEmail: email }] },
+      });
+
       // Memberships go with it (cascade); recipient/consent links were cleared above.
       await tx.contact.delete({ where: { id: contact.id } });
 
@@ -105,6 +121,7 @@ export async function eraseContact(workspaceId: string, contactId: string, opts:
         campaignEmailsAnonymized: recipientIds.length,
         eventsCleaned,
         consentEventsHashed: consent.count,
+        transactionalEmailsDeleted: transactional.count,
         suppressed: keepSuppressed,
       };
     },

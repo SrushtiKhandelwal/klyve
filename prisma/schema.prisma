@@ -1021,5 +1021,6 @@ model TransactionalEmail {
   @@index([apiKeyId, createdAt])
   @@index([providerMessageId])
   @@index([contactId])
+  @@index([createdAt]) // hourly retention clean-up
   @@map("transactional_email")
 }

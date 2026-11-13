@@ -7,7 +7,9 @@ import { findSuppression } from "@/lib/suppression";
 //
 // What's included: the profile, list memberships, every campaign they were
 // sent (with sent / opened / clicked times), every tracked event, their
-// consent history, and whether their address is on the suppression list.
+// consent history, whether their address is on the suppression list, and the
+// transactional emails (receipts, password resets...) sent to them: date,
+// subject and status only, never the content.
 //
 // What's left out on purpose:
 //  - IP hashes: they are a keyed hash used to spot duplicate clicks. They
@@ -111,6 +113,15 @@ export async function buildContactExport(workspaceId: string, contactId: string)
 
   const suppression = await findSuppression(workspaceId, contact.email);
 
+  // Transactional emails to this person: linked to the contact, or sent to
+  // the address (e.g. before they became a contact). Not the HTML/text.
+  const transactional = await db.transactionalEmail.findMany({
+    where: { workspaceId, OR: [{ contactId: contact.id }, { toEmail: contact.email }] },
+    orderBy: { createdAt: "asc" },
+    take: MAX_EVENTS,
+    select: { createdAt: true, sentAt: true, toEmail: true, fromEmail: true, subject: true, status: true },
+  });
+
   return {
     format: "klyve.contact-export",
     version: EXPORT_FORMAT_VERSION,
@@ -166,6 +177,15 @@ export async function buildContactExport(workspaceId: string, contactId: string)
       detail: c.detail,
     })),
     suppression: suppression ? { suppressed: true, reason: suppression.reason } : { suppressed: false, reason: null },
+    transactionalEmails: transactional.map((t) => ({
+      createdAt: iso(t.createdAt),
+      sentAt: iso(t.sentAt),
+      sentTo: t.toEmail,
+      from: t.fromEmail,
+      subject: t.subject,
+      status: t.status,
+    })),
+    transactionalEmailsTruncated: transactional.length >= MAX_EVENTS,
   };
 }
 
