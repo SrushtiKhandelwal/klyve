@@ -1,0 +1,15 @@
+# Keep the Docker build small and free of secrets.
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+storage
+src/generated
+*.tsbuildinfo
+.agents
+.windsurf
+.claude
+coverage
+npm-debug.log*

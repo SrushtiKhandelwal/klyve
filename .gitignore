@@ -50,3 +50,15 @@ next-env.d.ts
 
 # uploaded images (local media storage)
 /storage/
+
+# production example env file (no secrets) is committed; real ones never are
+!.env.production.example
+
+# production database backups
+/backups/
+
+# AI-tool skill folders added by `prisma init` (kept locally, not part of the app)
+/.agents/
+/.windsurf/
+/.claude/
+/skills-lock.json

@@ -1,0 +1,20 @@
+# Caddy gets and renews a free HTTPS certificate (Let's Encrypt) for your
+# domain automatically, then forwards everything to the Klyve app.
+# KLYVE_DOMAIN comes from .env.production (e.g. app.klyveapp.tech).
+{$KLYVE_DOMAIN} {
+	encode zstd gzip
+
+	# Uploads are limited in the app too; this is a second safety net.
+	request_body {
+		max_size 12MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	reverse_proxy app:3000
+}

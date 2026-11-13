@@ -1,0 +1,63 @@
+# Production: Klyve + Postgres + Caddy (automatic HTTPS) on one server.
+# Full walkthrough: docs/DEPLOY.md
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Nothing here contains secrets: they come from .env.production on the server
+# (never committed; see .env.production.example).
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-klyve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:-klyve}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./backups:/backups # pg_dump files land here (see scripts/backup.sh)
+    # No "ports:": the database is only reachable from the app, never the internet.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-klyve} -d ${POSTGRES_DB:-klyve}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env.production
+    environment:
+      # Points the app at the "db" service above (overrides any value in the env file).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-klyve}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-klyve}?schema=public
+      MEDIA_STORAGE_DIR: /app/storage/uploads
+    volumes:
+      - uploads:/app/storage/uploads # uploaded images survive updates
+    # Only Caddy talks to the app; it isn't published to the internet directly.
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      KLYVE_DOMAIN: ${KLYVE_DOMAIN:?set KLYVE_DOMAIN in .env.production}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # HTTPS certificates
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  uploads:
+  caddy-data:
+  caddy-config:
