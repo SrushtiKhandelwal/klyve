@@ -13,7 +13,10 @@ import "server-only";
 //
 // Read on every call (not once at start-up), so tests can switch settings.
 
-export const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
+// Groq retires models from time to time (llama-3.3-70b-versatile is gone).
+// If AI suddenly fails with "model not found" in the server log, pick a
+// current model from https://console.groq.com/docs/models and set GROQ_MODEL.
+export const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
 export const DEFAULT_GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 export const DEFAULT_MONTHLY_LIMIT = 100;
 export const DEFAULT_DAILY_LIMIT = 30;

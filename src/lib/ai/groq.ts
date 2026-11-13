@@ -55,11 +55,16 @@ export async function callGroq(request: GroqRequest): Promise<GroqResult> {
   const config = getAiConfig();
   if (!config.apiKey) throw new GroqCallError("not_configured", { sent: false });
 
+  // "Reasoning" models (OpenAI's gpt-oss on Groq) think before answering, and
+  // that thinking counts towards max_tokens. Keep the thinking short ("low":
+  // fast and plenty for email copy) and give it some room on top of the answer.
+  const reasoning = /gpt-oss/i.test(config.model);
   const body = {
     model: config.model,
     messages: request.messages,
-    max_tokens: request.maxTokens,
+    max_tokens: reasoning ? request.maxTokens + 600 : request.maxTokens,
     temperature: request.temperature,
+    ...(reasoning ? { reasoning_effort: "low" } : {}),
     ...(request.json === false ? {} : { response_format: { type: "json_object" } }),
   };
 
@@ -91,6 +96,10 @@ export async function callGroq(request: GroqRequest): Promise<GroqResult> {
     if (status === 408 || status === 504) throw new GroqCallError("timeout", { sent: true, status });
     // 400 "json_validate_failed": the model didn't manage to write valid JSON.
     if (status === 400 && errorText.includes("json_validate_failed")) throw new GroqCallError("bad_output", { sent: true, status });
+    // The model was retired or renamed by Groq: tell the server owner what to change.
+    if (errorText.includes("model_not_found")) {
+      console.error(`[ai] Groq says the model "${config.model}" doesn't exist any more. Set GROQ_MODEL in .env to a current model (see https://console.groq.com/docs/models).`);
+    }
     throw new GroqCallError("provider_error", { sent: true, status });
   }
 
