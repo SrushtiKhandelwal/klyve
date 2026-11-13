@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ClipboardList, Globe, LayoutTemplate, Smartphone } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { CreateFormButton } from "@/components/forms/create-form-button";
 import { FormCard, type FormCardData } from "@/components/forms/form-card";
@@ -101,9 +102,7 @@ const PLACES = [
 function FormsEmpty() {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-12 text-center sm:py-16">
-      <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-        <ClipboardList className="size-7" aria-hidden />
-      </span>
+      <Glyph icon={ClipboardList} size="xl" strokeWidth={1.5} className="size-10" />
       <h2 className="mt-5 text-lg font-semibold text-zinc-900">Grow your list with a sign-up form</h2>
       <p className="mt-1.5 max-w-md text-sm text-zinc-500">
         People type in their email, tick a box to agree, and land straight on your list, ready for your next campaign.
@@ -112,7 +111,7 @@ function FormsEmpty() {
       <ul className="mt-8 grid w-full max-w-3xl gap-3 text-left sm:grid-cols-3">
         {PLACES.map((place) => (
           <li key={place.title} className="flex gap-3 rounded-xl border bg-zinc-50/60 p-4">
-            <place.icon className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden />
+            <Glyph icon={place.icon} size="sm" className="mt-0.5" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-zinc-900">{place.title}</p>
               <p className="mt-1 text-xs text-zinc-500">{place.text}</p>

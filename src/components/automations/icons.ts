@@ -35,13 +35,16 @@ export const STEP_ICONS: Record<AutomationStep["type"], LucideIcon> = {
   exit: DoorOpen,
 };
 
-/** Soft colour per step type (icon tile background + icon colour). */
+/**
+ * Icon colour per step type, so each kind of step is easy to spot in the
+ * builder. Icons are drawn bare (no tile behind them): <Glyph tone="current">.
+ */
 export const STEP_TONES: Record<AutomationStep["type"], string> = {
-  send_email: "bg-emerald-50 text-emerald-700",
-  wait: "bg-sky-50 text-sky-700",
-  condition: "bg-violet-50 text-violet-700",
-  add_to_list: "bg-teal-50 text-teal-700",
-  remove_from_list: "bg-orange-50 text-orange-700",
-  update_field: "bg-indigo-50 text-indigo-700",
-  exit: "bg-zinc-100 text-zinc-600",
+  send_email: "text-emerald-600",
+  wait: "text-sky-600",
+  condition: "text-violet-600",
+  add_to_list: "text-teal-600",
+  remove_from_list: "text-orange-600",
+  update_field: "text-indigo-600",
+  exit: "text-zinc-500",
 };

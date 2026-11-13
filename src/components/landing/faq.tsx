@@ -1,20 +1,12 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ChevronDownIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
+import { FaqContact } from "@/components/landing/contact-email";
 import { SectionHeading } from "@/components/landing/section-heading";
 
 const linkClass = "font-medium text-emerald-700 underline underline-offset-4 hover:text-emerald-800";
 
 const QUESTIONS: { q: string; a: ReactNode }[] = [
-  {
-    q: "What does Klyve cost?",
-    a: (
-      <p>
-        Nothing. There are no plans or per-email fees. The only cost is your sending provider, which you pay
-        directly. Many charge cents per thousand emails, and several have a free tier.
-      </p>
-    ),
-  },
   {
     q: "What is a sending provider?",
     a: (
@@ -26,12 +18,45 @@ const QUESTIONS: { q: string; a: ReactNode }[] = [
     ),
   },
   {
+    q: "What do I pay for sending?",
+    a: (
+      <p>
+        Your provider bills you directly, at their own rates. Many charge a few cents per thousand emails, and
+        several include a monthly allowance at no cost. Klyve adds nothing on top, and sets no daily sending cap
+        of its own. See{" "}
+        <Link href="#pricing" className={linkClass}>
+          Pricing
+        </Link>
+        .
+      </p>
+    ),
+  },
+  {
     q: "Can I use Gmail?",
     a: (
       <p>
         Yes, through SMTP with an app password. Google limits how much a Gmail account can send each day
         (around 500 for a personal account), and Klyve warns you before a campaign would go over. It&apos;s
         fine for small lists; for anything bigger, a dedicated provider is a better fit.
+      </p>
+    ),
+  },
+  {
+    q: "How does the AI writing help work?",
+    a: (
+      <p>
+        It only runs when you click it, and only sees what you ask it to work on: your one-sentence brief, or
+        the text you want to improve or translate. When it explains a campaign&apos;s results, it gets totals
+        only, never a contact&apos;s email or name. Each workspace has a monthly AI allowance.
+      </p>
+    ),
+  },
+  {
+    q: "Can my team work in the same workspace?",
+    a: (
+      <p>
+        Yes. Invite teammates by email as an admin or a member, and the owner can change roles at any time.
+        Everyone can turn on two-step login for extra protection.
       </p>
     ),
   },
@@ -74,28 +99,41 @@ const QUESTIONS: { q: string; a: ReactNode }[] = [
   },
 ];
 
-// Frequently asked questions as an accordion. There's no accordion in
-// components/ui, so we use the browser's own <details>/<summary>: it works
-// with the keyboard and screen readers, even before JavaScript loads.
+// Frequently asked questions. There's no accordion in components/ui, so we
+// use the browser's own <details>/<summary>: it works with the keyboard and
+// screen readers, even before JavaScript loads.
 export function Faq() {
   return (
-    <section id="faq" aria-labelledby="faq-title" className="scroll-mt-20 border-t border-zinc-200 bg-zinc-50/60">
-      <div className="mx-auto w-full max-w-3xl px-4 py-20 sm:px-6 sm:py-24">
-        <SectionHeading id="faq-title" eyebrow="FAQ" title="Questions, answered" />
+    <section id="faq" aria-labelledby="faq-title" className="scroll-mt-16 border-t border-zinc-200/70">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-12 px-4 py-24 sm:px-6 sm:py-32 lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)] lg:gap-20">
+        <div className="lg:sticky lg:top-28 lg:self-start">
+          <SectionHeading id="faq-title" eyebrow="FAQ" title="Questions, answered">
+            Anything else on your mind? The{" "}
+            <Link href="/docs/api" className={linkClass}>
+              API docs
+            </Link>{" "}
+            go deeper on the technical side.
+          </SectionHeading>
+        </div>
 
-        <div className="mt-12 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white">
-          {QUESTIONS.map(({ q, a }) => (
-            <details key={q} className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left font-medium text-zinc-900 outline-none select-none hover:text-emerald-800 focus-visible:ring-3 focus-visible:ring-emerald-600/40 focus-visible:ring-inset sm:px-6 [&::-webkit-details-marker]:hidden">
-                {q}
-                <ChevronDownIcon
-                  className="size-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-180 motion-reduce:transition-none"
-                  aria-hidden="true"
-                />
-              </summary>
-              <div className="px-5 pb-5 text-sm leading-6 text-zinc-600 sm:px-6">{a}</div>
-            </details>
-          ))}
+        <div>
+          <div className="border-b border-zinc-200">
+            {QUESTIONS.map(({ q, a }) => (
+              <details key={q} className="group border-t border-zinc-200">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 rounded-md py-5 text-left text-lg font-medium tracking-[-0.01em] text-zinc-950 outline-none select-none hover:text-emerald-800 focus-visible:ring-3 focus-visible:ring-emerald-600/40 [&::-webkit-details-marker]:hidden">
+                  {q}
+                  <PlusIcon
+                    className="size-5 shrink-0 text-emerald-600 transition-transform duration-300 group-open:rotate-45 motion-reduce:transition-none"
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                  />
+                </summary>
+                <div className="max-w-2xl pr-10 pb-6 text-[15px] leading-7 text-zinc-600">{a}</div>
+              </details>
+            ))}
+          </div>
+          {/* Only shown when CONTACT_EMAIL is set. */}
+          <FaqContact />
         </div>
       </div>
     </section>

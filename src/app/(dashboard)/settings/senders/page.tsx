@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertTriangleIcon, CheckCircle2Icon, ClockIcon, MailIcon, ServerIcon, ShieldCheckIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { AddSenderDialog } from "@/components/settings/senders/add-sender-dialog";
 import { SenderActions } from "@/components/settings/senders/sender-actions";
@@ -28,7 +29,7 @@ export default function SendersPage() {
       </Suspense>
 
       <div className="flex gap-3 rounded-xl border bg-white p-5 text-sm text-zinc-600">
-        <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+        <Glyph icon={ShieldCheckIcon} className="mt-0.5" />
         <div className="grid gap-1">
           <p className="font-medium text-zinc-900">Why we verify every sender</p>
           <p>
@@ -83,9 +84,7 @@ async function SendersSection() {
 
         {views.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-12 text-center">
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-              <MailIcon className="size-6" />
-            </span>
+            <Glyph icon={MailIcon} size="xl" strokeWidth={1.5} />
             <h3 className="mt-4 font-semibold text-zinc-900">No senders yet</h3>
             <p className="mt-1 max-w-sm text-sm text-zinc-500">
               Add an address like news@yourcompany.com. We&apos;ll send it a code to confirm it&apos;s yours.
@@ -155,9 +154,7 @@ function StatusBadge({ verified }: { verified: boolean }) {
 function NoProviderCallout({ canManage }: { canManage: boolean }) {
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-5 sm:flex-row sm:items-center">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-600">
-        <ServerIcon className="size-5" />
-      </span>
+      <Glyph icon={ServerIcon} size="lg" strokeWidth={1.5} />
       <div className="grid flex-1 gap-0.5">
         <p className="font-medium text-zinc-900">Connect a sending provider first</p>
         <p className="text-sm text-zinc-600">

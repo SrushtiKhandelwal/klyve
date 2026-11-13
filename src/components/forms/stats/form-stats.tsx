@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BarChart3, Globe, Inbox, Share2, ShieldBan, UserCheck, UserPlus, Users } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { RelativeTime } from "@/components/campaigns/local-time";
 import { formatCount } from "@/components/campaigns/types";
 import { RESULT_META } from "@/components/forms/stats/result-meta";
@@ -64,9 +65,7 @@ export async function FormStats({ formId }: { formId: string }) {
 function EmptyState() {
   return (
     <section className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-10 text-center">
-      <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-        <Share2 aria-hidden className="size-5" />
-      </span>
+      <Glyph icon={Share2} size="xl" strokeWidth={1.5} className="mb-4" />
       <h2 className="font-semibold text-zinc-900">No sign-ups yet</h2>
       <p className="mt-1 max-w-sm text-sm text-zinc-500">
         Share your form&apos;s link, print its QR code or add it to your website (see <b>Share &amp; embed</b>). New sign-ups show

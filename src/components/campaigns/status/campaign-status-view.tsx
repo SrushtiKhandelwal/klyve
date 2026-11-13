@@ -16,6 +16,7 @@ import {
   SkipForward,
   type LucideIcon,
 } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { getCampaignProgressAction } from "@/app/actions/campaigns";
 import { CampaignStatusBadge } from "@/components/campaigns/campaign-status-badge";
 import { LocalDateTime, RelativeTime } from "@/components/campaigns/local-time";
@@ -274,9 +275,8 @@ function ProblemBox({ status, lastError }: { status: string; lastError: string |
 function ScheduledCard({ scheduledAt }: { scheduledAt: string | null }) {
   return (
     <section className="flex flex-col gap-4 rounded-xl border bg-white p-5 sm:flex-row sm:items-center">
-      <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
-        <CalendarClock className="size-6" aria-hidden />
-      </span>
+      {/* Sky blue = "scheduled", the same colour as its status label. */}
+      <Glyph icon={CalendarClock} size="xl" tone="current" strokeWidth={1.5} className="text-sky-600" />
       <div className="min-w-0">
         <p className="text-lg font-semibold text-zinc-900">
           {scheduledAt ? (

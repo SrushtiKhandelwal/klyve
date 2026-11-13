@@ -4,6 +4,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { CircleAlert, Gauge, Plus, Server, ShieldCheck } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { buttonVariants } from "@/components/ui/button";
 import type { ProviderSummary } from "@/lib/email/provider-admin";
 import { cn } from "@/lib/utils";
@@ -49,7 +50,8 @@ export function ProviderList({
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="font-semibold break-words text-zinc-900">{p.name}</h2>
                   {p.isDefault && (
-                    <span className="inline-flex h-5 items-center rounded-full bg-emerald-600 px-2 text-xs font-medium text-white">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                      <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
                       Default
                     </span>
                   )}
@@ -118,9 +120,7 @@ function Meta({ label, children }: { label: string; children: ReactNode }) {
 export function ProvidersEmptyState({ canManage }: { canManage: boolean }) {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-14 text-center sm:py-20">
-      <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-        <Server className="size-7" aria-hidden />
-      </span>
+      <Glyph icon={Server} size="xl" strokeWidth={1.5} className="size-10" />
       <h2 className="mt-5 text-lg font-semibold text-zinc-900">Connect your first provider</h2>
       <p className="mt-1.5 max-w-md text-sm text-zinc-500">
         Klyve is free because your emails go out through your own email service: Gmail, Amazon SES, Resend and

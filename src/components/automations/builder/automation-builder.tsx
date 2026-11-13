@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { activateAutomationAction, duplicateAutomationAction, pauseAutomationAction } from "@/app/actions/automations";
+import { Glyph } from "@/components/brand/glyph";
 import { SaveIndicator } from "@/components/campaigns/setup/setup-section";
 import { BuilderSwitch } from "@/components/forms/builder/builder-switch";
 import { Button } from "@/components/ui/button";
@@ -427,9 +428,7 @@ function Overview({ problems, readOnly }: { problems: string[]; readOnly: boolea
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-          <MousePointerClick className="size-4" aria-hidden />
-        </span>
+        <Glyph icon={MousePointerClick} className="mt-0.5" />
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-zinc-900">{readOnly ? "How it works" : "Build your workflow"}</h2>
           <p className="mt-0.5 text-xs text-zinc-500">

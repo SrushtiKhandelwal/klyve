@@ -3,6 +3,7 @@
 // Small display pieces shared by the providers list and forms.
 import { useSyncExternalStore } from "react";
 import { CircleAlert, CircleCheck, CircleDashed, Cloud, Mail, Send, Server, Zap, type LucideIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import type { ProviderTypeValue } from "@/lib/email/provider-configs";
 import { cn } from "@/lib/utils";
 
@@ -39,18 +40,9 @@ const TYPE_ICONS: Record<ProviderTypeValue, LucideIcon> = {
   POSTMARK: Mail,
 };
 
+/** The provider's icon, drawn bare in Klyve green (no tile behind it). */
 export function ProviderTypeIcon({ type, className }: { type: ProviderTypeValue; className?: string }) {
-  const Icon = TYPE_ICONS[type] ?? Server;
-  return (
-    <span
-      className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600",
-        className,
-      )}
-    >
-      <Icon className="size-5" aria-hidden />
-    </span>
-  );
+  return <Glyph icon={TYPE_ICONS[type] ?? Server} size="lg" strokeWidth={1.5} className={className} />;
 }
 
 const subscribe = () => () => {};

@@ -3,5 +3,5 @@
 export const BRAND = {
   name: "Klyve",
   tagline:
-    "Free email marketing. Connect your own sending provider, with no daily sending limit.",
+    "Email marketing sent through your own provider: campaigns, automations, analytics and AI writing help.",
 } as const;

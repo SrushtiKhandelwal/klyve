@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { CircleAlert, CircleCheck, CloudAlert, Loader2 } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SaveState } from "./use-draft-autosave";
@@ -39,14 +40,12 @@ export function SetupSection({
       className={cn("scroll-mt-6 rounded-xl border bg-white transition-shadow", open && "shadow-sm ring-1 ring-emerald-500/20")}
     >
       <div className="flex items-start gap-3 p-4 sm:gap-4 sm:p-5">
-        <span
-          className={cn(
-            "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full",
-            done ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600",
-          )}
-        >
-          <Icon className="size-4.5" aria-hidden />
-        </span>
+        {/* Bare icon: Klyve green when done, amber while it still needs something. */}
+        <Glyph
+          icon={Icon}
+          tone={done ? "brand" : "current"}
+          className={cn("mt-0.5", !done && "text-amber-600")}
+        />
         <div className="min-w-0 flex-1">
           <h2 id={`${id}-title`} className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold text-zinc-900">
             {title}

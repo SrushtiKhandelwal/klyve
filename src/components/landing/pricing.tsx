@@ -1,85 +1,108 @@
-import { CheckIcon, InfoIcon, MinusIcon } from "lucide-react";
+import { CheckIcon, MinusIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
+import { CtaLink } from "@/components/landing/cta-link";
 import { SectionHeading } from "@/components/landing/section-heading";
 import { BRAND } from "@/lib/brand";
 
 // Only comparisons that are clearly true of most email tools. No names,
 // no invented numbers.
 const ROWS = [
-  { label: "Daily sending cap", typical: "Common on free plans", klyve: "None from us" },
-  { label: "Automation", typical: "Often a paid add-on", klyve: "Included" },
+  { label: "Daily sending cap", typical: "Common on entry plans", klyve: "None from us" },
+  { label: "Automation and AI", typical: "Often a paid add-on", klyve: "Included" },
   { label: "Who you pay for sending", typical: "The email tool", klyve: "Your provider, directly" },
 ];
 
-// "Free, really": explains the bring-your-own-provider model honestly.
+// What's included, shown like the lines of a statement.
+const INCLUDED = ["Campaigns and the editor", "Automations and AI writing", "Transactional API", "Team members and roles"];
+
+// Pricing: the one place the page talks about price. Explains the
+// bring-your-own-provider model honestly.
 export function Pricing() {
   return (
-    <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-20 border-y border-zinc-200 bg-zinc-50/60">
-      <div className="mx-auto grid w-full max-w-6xl items-start gap-12 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-2 lg:gap-16">
+    <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-16 border-t border-zinc-200/70 bg-zinc-50">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-16 px-4 py-24 sm:px-6 sm:py-32 lg:grid-cols-2 lg:gap-20">
         <div>
-          <SectionHeading id="pricing-title" eyebrow="Pricing" title="Free, really" align="left" />
-          <div className="mt-6 grid gap-4 text-base leading-7 text-zinc-600">
-            <p>
-              Klyve doesn&apos;t send email from its own servers. You connect a sending provider you choose, and
-              your emails go out through your own account with them.
-            </p>
-            <p>
-              Because we never pay for your sending, we don&apos;t need to charge for it, cap it, or keep
-              features behind a plan. You pay your provider directly, at their price. That&apos;s often cents
-              per thousand emails, or nothing at all on a free tier.
-            </p>
-          </div>
+          <SectionHeading id="pricing-title" eyebrow="Pricing" title="Every feature. No plan to outgrow.">
+            {BRAND.name} is free to use: no tiers, no per-email fees and nothing locked behind an upgrade. Your
+            emails go out through your own provider account, so you pay them directly, at their price.
+          </SectionHeading>
 
-          <div className="mt-8 flex gap-3 rounded-2xl border border-emerald-600/15 bg-emerald-50/60 p-5 text-sm leading-6 text-zinc-700">
-            <InfoIcon className="mt-0.5 size-4 shrink-0 text-emerald-700" aria-hidden="true" />
-            <p>
-              <span className="font-semibold text-zinc-900">e.g.</span> 2,000 subscribers and 4 newsletters a
-              month is 8,000 emails. At a few cents per thousand, that&apos;s well under a dollar a month, and a
-              provider&apos;s free tier may cover it entirely. Prices vary, so check your provider&apos;s
-              current pricing.
-            </p>
+          {/* Comparison. Column titles are hidden from screen readers: each
+              value carries its own hidden label instead, so it reads in order. */}
+          <div className="mt-12">
+            <div
+              aria-hidden="true"
+              className="grid grid-cols-2 gap-x-4 border-b border-zinc-900 pb-3 text-xs font-medium tracking-wider uppercase sm:grid-cols-[1.25fr_1fr_1fr]"
+            >
+              <span className="hidden sm:block" />
+              <span className="text-zinc-500">Typical plans</span>
+              <span className="text-emerald-700">{BRAND.name}</span>
+            </div>
+            <ul aria-label={`How ${BRAND.name} compares with typical email marketing plans`}>
+              {ROWS.map((row) => (
+                <li
+                  key={row.label}
+                  className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-b border-zinc-200 py-4 text-sm sm:grid-cols-[1.25fr_1fr_1fr]"
+                >
+                  <p className="col-span-2 font-medium text-zinc-950 sm:col-span-1">{row.label}</p>
+                  <p className="flex gap-1.5 text-zinc-500">
+                    <MinusIcon className="mt-0.5 size-4 shrink-0 text-zinc-400" aria-hidden="true" />
+                    <span>
+                      <span className="sr-only">Typical plans: </span>
+                      {row.typical}
+                    </span>
+                  </p>
+                  <p className="flex gap-1.5 font-medium text-zinc-950">
+                    <Glyph icon={CheckIcon} size="sm" strokeWidth={2.25} className="mt-0.5" />
+                    <span>
+                      <span className="sr-only">{BRAND.name}: </span>
+                      {row.klyve}
+                    </span>
+                  </p>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
-        {/* Comparison card */}
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          {/* Column titles. Hidden from screen readers: each value below
-              carries its own hidden label instead, so it reads in order. */}
-          <div
-            aria-hidden="true"
-            className="grid grid-cols-2 gap-x-4 border-b border-zinc-200 bg-zinc-50/80 px-5 py-3 text-sm sm:grid-cols-[1.2fr_1fr_1fr]"
-          >
-            <span className="hidden sm:block" />
-            <span className="font-medium text-zinc-500">Typical plans</span>
-            <span className="font-semibold text-emerald-700">{BRAND.name}</span>
-          </div>
-          {/* On phones the row name sits above its two values; from "sm" up it's a 3-column row. */}
-          <ul aria-label="How Klyve compares with typical email marketing plans">
-            {ROWS.map((row) => (
-              <li
-                key={row.label}
-                className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-zinc-100 px-5 py-4 text-sm last:border-0 sm:grid-cols-[1.2fr_1fr_1fr]"
-              >
-                <p className="col-span-2 font-medium text-zinc-900 sm:col-span-1">{row.label}</p>
-                <p className="flex gap-1.5 text-zinc-500">
-                  <MinusIcon className="mt-0.5 size-4 shrink-0 text-zinc-400" aria-hidden="true" />
-                  <span>
-                    <span className="sr-only">Typical plans: </span>
-                    {row.typical}
-                  </span>
-                </p>
-                <p className="flex gap-1.5 font-medium text-zinc-900">
-                  <CheckIcon className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden="true" />
-                  <span>
-                    <span className="sr-only">{BRAND.name}: </span>
-                    {row.klyve}
-                  </span>
-                </p>
-              </li>
-            ))}
-          </ul>
-          <p className="border-t border-zinc-200 bg-zinc-50/60 px-4 py-3 text-xs leading-5 text-zinc-500 sm:px-5">
-            Your provider&apos;s own limits and prices still apply. Klyve adds no fees on top.
+        {/* The "statement": what a month on Klyve costs. */}
+        <div className="rounded-2xl border border-zinc-200 bg-white p-7 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_20px_48px_-24px_rgb(0_0_0/0.14)] sm:p-10">
+          <p className="text-sm font-medium text-zinc-500">What {BRAND.name} costs you each month</p>
+          <p className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-6xl leading-none font-semibold tracking-[-0.05em] text-zinc-950 sm:text-7xl">
+              Free
+            </span>
+            <span className="text-zinc-500">for every workspace</span>
           </p>
+
+          <dl className="mt-8 grid text-sm">
+            {INCLUDED.map((item) => (
+              <div
+                key={item}
+                className="flex items-center justify-between gap-4 border-t border-dashed border-zinc-200 py-3"
+              >
+                <dt className="flex items-center gap-2.5 text-zinc-800">
+                  <Glyph icon={CheckIcon} size="sm" strokeWidth={2.25} />
+                  {item}
+                </dt>
+                <dd className="text-zinc-500">Included</dd>
+              </div>
+            ))}
+            <div className="flex items-center justify-between gap-4 border-y border-dashed border-zinc-200 py-3">
+              <dt className="pl-6.5 text-zinc-800">Sending</dt>
+              <dd className="text-right text-zinc-500">Billed by your provider</dd>
+            </div>
+          </dl>
+
+          <p className="mt-6 text-xs leading-5 text-zinc-500">
+            For example, 2,000 subscribers and 4 newsletters a month is 8,000 emails. Many providers charge a few
+            cents per thousand, and several have a free tier that covers it. Prices vary, so check your
+            provider&apos;s current rates.
+          </p>
+
+          <CtaLink href="/signup" arrow className="mt-8 w-full">
+            Create your workspace
+          </CtaLink>
         </div>
       </div>
     </section>

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpenIcon, KeyRoundIcon, ShieldAlertIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { CreateKeyDialog } from "@/components/api-keys/create-key-dialog";
 import { KeyActions } from "@/components/api-keys/key-actions";
 import { RelativeTime } from "@/components/campaigns/local-time";
@@ -94,9 +95,7 @@ async function KeysSection() {
 
       {keys.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-12 text-center">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-            <KeyRoundIcon className="size-6" aria-hidden />
-          </span>
+          <Glyph icon={KeyRoundIcon} size="xl" strokeWidth={1.5} />
           <h3 className="mt-4 font-semibold text-zinc-900">No API keys yet</h3>
           <p className="mt-1 max-w-sm text-sm text-zinc-500">
             {canManage

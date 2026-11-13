@@ -1,4 +1,5 @@
 import { ArrowDownRight, ArrowUpRight, Eye, MailCheck, Minus, MousePointerClick, UserMinus, type LucideIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatRate } from "@/lib/tracking/metrics";
 import { getWorkspacePerformance, type PeriodTotals } from "@/lib/tracking/reports";
@@ -98,11 +99,11 @@ function rateSub(t: PeriodTotals, what: "opens" | "clicks"): string {
   return what === "opens" ? `${numberFormat.format(t.opens)} people opened` : `${numberFormat.format(t.clicks)} people clicked`;
 }
 
-function Tile({ icon: Icon, label, value, sub, change }: { icon: LucideIcon; label: string; value: string; sub: string; change: Change | null }) {
+function Tile({ icon, label, value, sub, change }: { icon: LucideIcon; label: string; value: string; sub: string; change: Change | null }) {
   return (
     <div className="flex min-w-0 flex-col gap-1 rounded-xl border bg-white p-4 shadow-xs">
       <dt className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
-        <Icon className="size-3.5 text-emerald-600" aria-hidden />
+        <Glyph icon={icon} size="xs" strokeWidth={2} />
         {label}
       </dt>
       <dd className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -121,8 +122,9 @@ function ChangeBadge({ change }: { change: Change }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums",
-        change.good === true ? "bg-emerald-50 text-emerald-700" : change.good === false ? "bg-red-50 text-red-700" : "bg-zinc-100 text-zinc-600",
+        // Plain coloured text, no pill: green = good news, red = bad news.
+        "inline-flex items-center gap-0.5 text-xs font-medium tabular-nums",
+        change.good === true ? "text-emerald-700" : change.good === false ? "text-red-700" : "text-zinc-500",
       )}
       title={spoken}
     >

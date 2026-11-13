@@ -10,7 +10,8 @@ export function BrandMark({ collapsible = false }: { collapsible?: boolean }) {
       href="/dashboard"
       className="flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-emerald-500/40"
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+      {/* The logo itself (same as the public site's), not an icon box. */}
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm shadow-emerald-900/10">
         <Mail className="size-4" />
       </span>
       <span

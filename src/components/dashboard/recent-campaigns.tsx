@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Megaphone } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { rowRates } from "@/components/campaigns/rates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CAMPAIGN_STATUS_META, type CampaignStatusValue } from "@/lib/campaigns/status";
@@ -73,10 +74,8 @@ export async function RecentCampaigns() {
   if (campaigns.length === 0) {
     return (
       <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-10 text-center">
-        <span className="flex size-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-          <Megaphone className="size-5" aria-hidden />
-        </span>
-        <p className="mt-3 font-medium text-zinc-900">No campaigns yet</p>
+        <Glyph icon={Megaphone} size="xl" strokeWidth={1.5} />
+        <p className="mt-4 font-medium text-zinc-900">No campaigns yet</p>
         <p className="mt-1 text-sm text-zinc-500">Your campaigns will show up here once you create one.</p>
         <Link href="/campaigns/new" className="mt-4 text-sm font-medium text-emerald-700 hover:text-emerald-800">
           Create a campaign

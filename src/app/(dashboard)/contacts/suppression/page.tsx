@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import type { Metadata } from "next";
 import { SearchX, ShieldBan } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { AddSuppressionsDialog } from "@/components/contacts/suppression/add-suppressions-dialog";
 import { ExportSuppressionsButton } from "@/components/contacts/suppression/export-button";
@@ -91,9 +92,7 @@ async function SuppressionContent({ searchParams }: { searchParams: SearchParams
   if (workspaceTotal === 0) {
     return (
       <div className="flex flex-col items-center rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-14 text-center">
-        <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-          <ShieldBan className="size-7" aria-hidden />
-        </span>
+        <Glyph icon={ShieldBan} size="xl" strokeWidth={1.5} className="size-10" />
         <h2 className="mt-5 text-lg font-semibold text-zinc-900">Nobody is suppressed yet</h2>
         <p className="mt-1.5 max-w-md text-sm text-zinc-500">
           Hard bounces and spam complaints will appear here automatically.

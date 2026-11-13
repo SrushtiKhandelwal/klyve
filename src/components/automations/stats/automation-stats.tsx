@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BarChart3, CheckCircle2, DoorOpen, Hourglass, Inbox, Mail, UserPlus, Users } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { RelativeTime } from "@/components/campaigns/local-time";
 import { formatCount } from "@/components/campaigns/types";
 import { EntriesChart } from "@/components/automations/stats/entries-chart";
@@ -72,9 +73,7 @@ function EmptyState({ status }: { status: AutomationStatsData["automation"]["sta
         : "Turn it on when you're happy with the steps. Only people who trigger it after that moment will enter.";
   return (
     <section className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-10 text-center">
-      <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-        <UserPlus aria-hidden className="size-5" />
-      </span>
+      <Glyph icon={UserPlus} size="xl" strokeWidth={1.5} className="mb-4" />
       <h2 className="font-semibold text-zinc-900">Nobody has entered yet</h2>
       <p className="mt-1 max-w-md text-sm text-zinc-500">{text}</p>
       <p className="mt-3 max-w-sm text-xs text-zinc-400">Statistics appear here as soon as the first person enters.</p>

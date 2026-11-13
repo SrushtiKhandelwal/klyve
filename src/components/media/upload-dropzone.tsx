@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState } from "react";
 import { AlertCircleIcon, CheckCircle2Icon, ImageUpIcon, XIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { ACCEPT_ATTRIBUTE } from "@/lib/media/limits";
@@ -98,9 +99,7 @@ export function UploadDropzone({
           dragging ? "border-emerald-500 bg-emerald-50" : "border-zinc-300 bg-zinc-50 hover:border-emerald-400 hover:bg-emerald-50/50",
         )}
       >
-        <span className="flex size-10 items-center justify-center rounded-full bg-white text-emerald-600 shadow-xs ring-1 ring-zinc-200">
-          <ImageUpIcon className="size-5" />
-        </span>
+        <Glyph icon={ImageUpIcon} size="lg" strokeWidth={1.5} />
         <span className="text-sm font-medium text-zinc-900">
           {busy ? "Uploading…" : (
             <>

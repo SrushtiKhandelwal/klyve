@@ -2,6 +2,7 @@
 
 import { useState, type DragEvent } from "react";
 import { Download, FileSpreadsheet, Loader2, Upload } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -63,9 +64,11 @@ export function UploadStep({
             : "border-zinc-300 bg-zinc-50/50 hover:border-emerald-400 hover:bg-emerald-50/40",
         )}
       >
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-          {reading ? <Loader2 className="size-6 animate-spin" /> : <Upload className="size-6" />}
-        </span>
+        {reading ? (
+          <Loader2 className="size-8 animate-spin text-emerald-600" aria-hidden />
+        ) : (
+          <Glyph icon={Upload} size="xl" strokeWidth={1.5} />
+        )}
         <span className="mt-4 font-medium text-zinc-900">
           {reading ? "Reading your file…" : "Drop your CSV file here, or click to choose one"}
         </span>

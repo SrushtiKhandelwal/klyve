@@ -61,7 +61,7 @@ function ProvidersSkeleton() {
       {[1, 2].map((n) => (
         <div key={n} className="flex flex-col gap-4 rounded-xl border bg-white p-5">
           <div className="flex items-center gap-3">
-            <Skeleton className="size-10 rounded-lg" />
+            <Skeleton className="size-6 rounded-md" />
             <div className="flex flex-1 flex-col gap-2">
               <Skeleton className="h-4 w-40" />
               <Skeleton className="h-3 w-64 max-w-full" />

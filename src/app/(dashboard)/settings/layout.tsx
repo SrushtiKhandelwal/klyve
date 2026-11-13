@@ -1,34 +1,20 @@
 import { Suspense, type ReactNode } from "react";
-import { SectionTabs, SectionTabsFallback, type SectionTab } from "@/components/dashboard/section-tabs";
+import { SettingsNav, SettingsNavFallback } from "@/components/dashboard/settings-nav";
 
-const SETTINGS_TABS: SectionTab[] = [
-  { href: "/settings", label: "General" },
-  { href: "/settings/profile", label: "Profile" },
-  { href: "/settings/team", label: "Team" },
-  { href: "/settings/security", label: "Security" },
-  { href: "/settings/providers", label: "Sending providers" },
-  { href: "/settings/senders", label: "Senders" },
-  { href: "/settings/domains", label: "Domains" },
-  { href: "/settings/brand", label: "Brand" },
-  { href: "/settings/tracking", label: "Link tracking" },
-  { href: "/settings/compliance", label: "Compliance" },
-  { href: "/settings/deliverability", label: "Deliverability" },
-  { href: "/settings/api", label: "API keys" },
-  { href: "/settings/ai", label: "AI" },
-];
-
-// Shared frame for Settings: tabs on top, the current tab's page below.
+// Shared frame for Settings: the settings menu on the left (a compact
+// drop-down box on top for phones and tablets), the current page beside it.
+// The menu stays in view while the page scrolls on desktop. Every settings
+// page keeps its own URL (/settings, /settings/profile, …).
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-col">
-      <div className="border-b bg-white px-4 sm:px-6 lg:px-10">
-        <div className="mx-auto w-full max-w-5xl">
-          <Suspense fallback={<SectionTabsFallback tabs={SETTINGS_TABS} label="Settings sections" />}>
-            <SectionTabs tabs={SETTINGS_TABS} label="Settings sections" />
-          </Suspense>
-        </div>
+    <div className="lg:mx-auto lg:flex lg:max-w-7xl lg:items-start">
+      <div className="px-4 pt-6 sm:px-6 md:pt-8 lg:sticky lg:top-0 lg:max-h-svh lg:w-56 lg:shrink-0 lg:overflow-y-auto lg:py-10 lg:pr-0 lg:pl-8">
+        {/* usePathname needs this boundary on pages with dynamic URLs. */}
+        <Suspense fallback={<SettingsNavFallback />}>
+          <SettingsNav />
+        </Suspense>
       </div>
-      {children}
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }

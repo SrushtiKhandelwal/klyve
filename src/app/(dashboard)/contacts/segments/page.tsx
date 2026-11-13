@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FilterIcon, PencilIcon, PlusIcon, TriangleAlertIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { DeleteSegmentDialog } from "@/components/contacts/segments/delete-segment-dialog";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
@@ -57,9 +58,7 @@ async function SegmentList() {
   if (segments.length === 0) {
     return (
       <div className="flex flex-col items-center rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-14 text-center sm:py-20">
-        <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-          <FilterIcon className="size-7" />
-        </span>
+        <Glyph icon={FilterIcon} size="xl" strokeWidth={1.5} className="size-10" />
         <h2 className="mt-5 text-lg font-semibold text-zinc-900">No segments yet</h2>
         <p className="mt-1.5 max-w-md text-sm text-zinc-500">
           A segment picks contacts by their details, for example everyone who is subscribed, lives in Pune and

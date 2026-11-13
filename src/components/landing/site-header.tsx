@@ -1,21 +1,23 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/landing/brand-mark";
+import { CtaLink } from "@/components/landing/cta-link";
 
 // Links to the sections of the landing page. They start with "/" so they
 // also work from /terms and /privacy (they jump back to the home page).
 const NAV_LINKS = [
+  { href: "/#how-it-works", label: "How it works" },
   { href: "/#features", label: "Features" },
-  { href: "/#pricing", label: "Pricing" },
   { href: "/#developers", label: "Developers" },
+  { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
 ];
 
-// The top bar of every public page (landing, terms, privacy).
-// It's static: no login check, so these pages can be prerendered.
+// The top bar of every public page (landing, terms, privacy). It stays at the
+// top while you scroll. It's static: no login check, so these pages can be
+// prerendered.
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white">
       {/* Keyboard users can jump straight past the navigation. */}
       <a
         href="#main"
@@ -31,26 +33,23 @@ export function SiteHeader() {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-md px-3 py-2 text-sm text-zinc-600 outline-none transition-colors hover:text-zinc-900 focus-visible:ring-3 focus-visible:ring-emerald-600/40"
+              className="rounded-md px-3 py-2 text-sm text-zinc-600 transition-colors outline-none hover:text-zinc-950 focus-visible:ring-3 focus-visible:ring-emerald-600/40"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Base UI buttons use the `render` prop (not `asChild`) to render
-              as a link. nativeButton={false} because a link isn't a <button>. */}
-          <Button variant="ghost" nativeButton={false} render={<Link href="/login" />} className="h-9 px-3">
-            Log in
-          </Button>
-          <Button
-            nativeButton={false}
-            render={<Link href="/signup" />}
-            className="h-9 bg-emerald-600 px-3.5 text-white hover:bg-emerald-700 focus-visible:ring-emerald-600/40"
+        <div className="flex items-center gap-1 sm:gap-2">
+          <Link
+            href="/login"
+            className="rounded-md px-3 py-2 text-sm font-medium text-zinc-700 transition-colors outline-none hover:text-zinc-950 focus-visible:ring-3 focus-visible:ring-emerald-600/40"
           >
-            Sign up free
-          </Button>
+            Log in
+          </Link>
+          <CtaLink href="/signup" size="sm">
+            Get started
+          </CtaLink>
         </div>
       </div>
     </header>

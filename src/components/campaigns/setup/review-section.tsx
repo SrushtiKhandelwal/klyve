@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarClock, CircleCheck, CircleX, Loader2, RefreshCw, Rocket, Send, TriangleAlert } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { toast } from "sonner";
 import { launchCampaignAction, preflightCampaignAction } from "@/app/actions/campaigns";
 import { formatDateTime, localTimeZoneLabel, useInBrowser } from "@/components/campaigns/local-time";
@@ -163,9 +164,7 @@ export function ReviewSection({
   return (
     <section id="review" aria-labelledby="review-title" className="scroll-mt-6 rounded-xl border bg-white">
       <div className="flex items-start gap-3 p-4 sm:gap-4 sm:p-5">
-        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
-          <Rocket className="size-4.5" aria-hidden />
-        </span>
+        <Glyph icon={Rocket} className="mt-0.5" />
         <div className="min-w-0 flex-1">
           <h2 id="review-title" className="font-semibold text-zinc-900">
             Review &amp; send
@@ -372,7 +371,7 @@ function WhenOption({
       <input type="radio" name="send-when" checked={checked} onChange={onSelect} className="mt-1 size-4 shrink-0 accent-emerald-600" />
       <span className="flex min-w-0 flex-col">
         <span className="flex items-center gap-1.5 text-sm font-medium text-zinc-900">
-          <Icon className="size-4 text-emerald-600" aria-hidden />
+          <Glyph icon={Icon} size="sm" />
           {title}
         </span>
         <span className="text-xs text-zinc-500">{text}</span>

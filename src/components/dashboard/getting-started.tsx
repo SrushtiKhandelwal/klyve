@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Check, CircleCheck, FileText, Send, Server, Users, type LucideIcon } from "lucide-react";
+import { ArrowRight, Check, CircleCheck, FileText, Send, Server, Users, type LucideIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
@@ -67,27 +68,31 @@ export async function GettingStarted() {
   // Everything done: a small confirmation instead of four big cards.
   if (doneCount === STEPS.length) {
     return (
-      <p className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
-        <CircleCheck className="size-5 shrink-0 text-emerald-600" aria-hidden />
+      <p className="flex items-center gap-3 rounded-xl border bg-white px-4 py-3 text-sm text-zinc-600 shadow-xs">
+        <Glyph icon={CircleCheck} />
         <span>
-          <span className="font-medium">You&apos;re all set.</span> All four getting-started steps are done, so your
-          workspace is ready to send.
+          <span className="font-medium text-zinc-900">You&apos;re all set.</span> All four getting-started steps are
+          done, so your workspace is ready to send.
         </span>
       </p>
     );
   }
 
+  // One card with a numbered list: each row is a step, ticked off once done.
   return (
-    <section aria-labelledby="getting-started" className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="getting-started" className="text-lg font-semibold text-zinc-900">
-          Getting started
-        </h2>
+    <section aria-labelledby="getting-started" className="overflow-hidden rounded-xl border bg-white shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 pt-5 pb-4">
+        <div className="flex flex-col gap-0.5">
+          <h2 id="getting-started" className="text-lg font-semibold text-zinc-900">
+            Getting started
+          </h2>
+          <p className="text-sm text-zinc-500">Four steps and your workspace is ready to send.</p>
+        </div>
         <ProgressLabel doneCount={doneCount} total={STEPS.length} />
       </div>
-      <ol className="grid gap-4 sm:grid-cols-2">
+      <ol className="divide-y border-t">
         {STEPS.map((step, index) => (
-          <StepCard key={step.key} step={step} index={index} isDone={done[step.key]} />
+          <StepRow key={step.key} step={step} index={index} isDone={done[step.key]} />
         ))}
       </ol>
     </section>
@@ -107,43 +112,56 @@ function ProgressLabel({ doneCount, total }: { doneCount: number; total: number 
         aria-valuemin={0}
         aria-valuemax={total}
         aria-valuenow={doneCount}
-        className="h-1.5 w-24 overflow-hidden rounded-full bg-zinc-200"
+        className="h-1.5 w-28 overflow-hidden rounded-full bg-zinc-100"
       >
-        <span className="block h-full rounded-full bg-emerald-500" style={{ width: `${(doneCount / total) * 100}%` }} />
+        <span
+          className="block h-full rounded-full bg-emerald-500"
+          style={{ width: `${(doneCount / total) * 100}%` }}
+        />
       </span>
     </div>
   );
 }
 
-function StepCard({ step, index, isDone }: { step: Step; index: number; isDone: boolean }) {
-  const Icon = isDone ? Check : step.icon;
+/**
+ * One step: its number (a tick once done), the step's icon, the words, and an
+ * arrow. The whole row is clickable.
+ */
+function StepRow({ step, index, isDone }: { step: Step; index: number; isDone: boolean }) {
   return (
-    <li className="relative flex gap-4 rounded-xl border bg-white p-5 shadow-xs transition-colors hover:border-emerald-300">
-      <span
-        className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-lg",
-          isDone ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-600",
+    <li className="group relative flex items-center gap-4 px-5 py-4 transition-colors hover:bg-zinc-50/80">
+      <span className="flex w-6 shrink-0 justify-center" aria-hidden>
+        {isDone ? (
+          <Glyph icon={Check} strokeWidth={2.5} />
+        ) : (
+          <span className="text-sm font-semibold text-zinc-400 tabular-nums">{String(index + 1).padStart(2, "0")}</span>
         )}
-      >
-        <Icon className="size-5" aria-hidden />
       </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <h3 className="font-medium text-zinc-900">
-            <span className="text-zinc-400">{index + 1}.</span>{" "}
-            {/* The stretched link makes the whole card clickable. */}
-            <Link href={step.href} className="after:absolute after:inset-0 hover:text-emerald-700">
-              {step.title}
-            </Link>
-          </h3>
-          {isDone && (
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20 ring-inset">
-              Done
-            </span>
-          )}
-        </div>
+      <Glyph icon={step.icon} tone={isDone ? "muted" : "brand"} className="hidden sm:block" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <h3 className={cn("text-sm font-medium", isDone ? "text-zinc-500" : "text-zinc-900")}>
+          {/* The stretched link makes the whole row clickable. */}
+          <Link
+            href={step.href}
+            className="outline-none group-hover:text-emerald-700 after:absolute after:inset-0 focus-visible:after:ring-3 focus-visible:after:ring-emerald-500/40 focus-visible:after:ring-inset"
+          >
+            {step.title}
+          </Link>
+          {isDone && <span className="sr-only"> (done)</span>}
+        </h3>
         <p className="text-sm text-zinc-500">{step.description}</p>
       </div>
+      {isDone ? (
+        <span className="hidden shrink-0 items-center gap-1.5 text-xs font-medium text-emerald-700 sm:flex" aria-hidden>
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          Done
+        </span>
+      ) : (
+        <ArrowRight
+          aria-hidden
+          className="size-4 shrink-0 text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-emerald-600"
+        />
+      )}
     </li>
   );
 }

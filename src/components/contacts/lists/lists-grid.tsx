@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Globe, ListChecks } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { Badge } from "@/components/ui/badge";
 import type { ListWithCounts } from "@/lib/contacts/lists";
 import { CreateListButton } from "./list-form-dialog";
@@ -17,9 +18,7 @@ export function ListsGrid({ lists }: { lists: ListWithCounts[] }) {
           className="relative flex min-w-0 flex-col rounded-xl border bg-white p-5 transition-shadow focus-within:ring-3 focus-within:ring-emerald-500/30 hover:shadow-sm"
         >
           <div className="flex items-start gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <ListChecks className="size-5" aria-hidden />
-            </span>
+            <Glyph icon={ListChecks} className="mt-0.5" />
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-2">
                 <h2 className="truncate font-semibold text-zinc-900">
@@ -93,9 +92,7 @@ export function PublicBadge() {
 export function ListsEmptyState() {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-14 text-center sm:py-20">
-      <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-        <ListChecks className="size-7" aria-hidden />
-      </span>
+      <Glyph icon={ListChecks} size="xl" strokeWidth={1.5} className="size-10" />
       <h2 className="mt-5 text-lg font-semibold text-zinc-900">Create your first list</h2>
       <p className="mt-1.5 max-w-md text-sm text-zinc-500">
         Lists group the people you email together, such as “Newsletter”, “Customers” or “Event

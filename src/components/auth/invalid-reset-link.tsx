@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { LinkIcon } from "lucide-react";
+import { Link2OffIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 
 // Shown when a password-reset link is missing, wrong, expired or already used.
 // Works in both Server and Client Components (no hooks, no server-only code).
 export function InvalidResetLink() {
   return (
     <div role="alert" className="grid gap-5 text-center">
-      <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-        <LinkIcon className="size-6" aria-hidden="true" />
-      </div>
+      {/* Amber = "something's wrong", drawn bare like every other icon. */}
+      <Glyph icon={Link2OffIcon} size="xl" tone="current" strokeWidth={1.5} className="mx-auto text-amber-600" />
       <div className="grid gap-1">
         <p className="font-medium">This reset link doesn&apos;t work anymore</p>
         <p className="text-sm text-muted-foreground">

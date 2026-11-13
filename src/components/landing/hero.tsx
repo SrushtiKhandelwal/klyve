@@ -1,73 +1,96 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
-import { ArrowRightIcon, CheckIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { AutomationPreview } from "@/components/landing/automation-preview";
+import { ArrowRightIcon, SparklesIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
+import { CtaLink } from "@/components/landing/cta-link";
+import { EditorMockup } from "@/components/landing/mockups/editor-mockup";
+import { LivePanel } from "@/components/landing/mockups/live-panel";
+import { MockStage } from "@/components/landing/mockups/parts";
+import "@/components/landing/landing.css";
 
-// Short, true facts shown under the buttons.
-const POINTS = ["No credit card", "No daily sending cap from us", "Automation included"];
+// Sending providers Klyve connects to (shown as plain names: these are
+// integrations, not customers).
+const PROVIDERS = ["Amazon SES", "Resend", "SendGrid", "Mailgun", "Postmark", "SMTP", "Gmail"];
 
-// The first thing visitors see: what Klyve is, and the two main actions.
+/** Staggers the hero's "rise" entrance animation. */
+const delay = (seconds: number) => ({ "--rise-delay": `${seconds}s` }) as CSSProperties;
+
+// The first thing visitors see. On wide screens it's half and half: the
+// headline on the left, and a "live" panel of Klyve at work on the right.
+// On phones and tablets they stack (words first). Below sits the campaign
+// editor, then the providers Klyve sends through.
 export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="relative overflow-hidden">
-      {/* One soft emerald wash behind the hero, nothing more. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[32rem] bg-gradient-to-b from-emerald-50/70 to-transparent"
-      />
+    <section aria-labelledby="hero-title" className="relative isolate">
+      <div aria-hidden="true" className="klv-grid pointer-events-none absolute inset-x-0 top-0 -z-10 h-[44rem]" />
 
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 pt-14 pb-16 sm:px-6 sm:pt-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pt-24 lg:pb-24">
-        <div className="text-center lg:text-left">
-          <p className="inline-flex items-center gap-2 rounded-full border border-emerald-600/15 bg-white px-3 py-1 text-sm font-medium text-emerald-700 shadow-sm">
-            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-            Free. Bring your own sending provider.
-          </p>
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-14 px-4 pt-14 sm:px-6 sm:pt-20 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-16 lg:pt-24">
+        <div>
+          <Link
+            href="#ai"
+            style={delay(0)}
+            className="klv-rise group inline-flex items-center gap-2 rounded-md text-sm text-zinc-600 outline-none hover:text-zinc-950 focus-visible:ring-3 focus-visible:ring-emerald-600/40"
+          >
+            <Glyph icon={SparklesIcon} size="sm" />
+            <span>
+              <span className="font-medium text-emerald-700">New:</span> write a whole campaign from one sentence
+            </span>
+            <ArrowRightIcon
+              aria-hidden="true"
+              className="size-3.5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-950 motion-reduce:transition-none"
+            />
+          </Link>
 
           <h1
             id="hero-title"
-            className="mt-6 text-4xl font-semibold tracking-tight text-balance text-zinc-900 sm:text-5xl lg:text-6xl"
+            style={delay(0.06)}
+            className="klv-rise mt-7 text-[2.6rem] leading-[1.03] font-semibold tracking-[-0.045em] text-balance text-zinc-950 sm:text-6xl lg:text-[3.1rem] xl:text-[3.6rem]"
           >
-            Email marketing without the limits
+            Campaigns that land.{" "}
+            <span className="block">
+              Sending that&apos;s <span className="text-emerald-700">yours</span>.
+            </span>
           </h1>
 
-          <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-pretty text-zinc-600 lg:mx-0">
-            Contacts, campaigns, a drag-and-drop editor, automation and a developer API, all free. Connect
-            Amazon SES, Resend, SendGrid, Mailgun, Postmark or any SMTP server, and send as much as your
-            provider allows.
+          <p
+            style={delay(0.12)}
+            className="klv-rise mt-6 max-w-xl text-lg leading-8 text-pretty text-zinc-600 sm:text-xl sm:leading-8"
+          >
+            One workspace for campaigns, automations, AI writing and analytics. Every email goes out through the
+            provider you choose, so your reputation, your costs and your data stay yours.
           </p>
 
-          <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
-            <Button
-              size="lg"
-              nativeButton={false}
-              render={<Link href="/signup" />}
-              className="h-11 bg-emerald-600 px-6 text-base text-white hover:bg-emerald-700 focus-visible:ring-emerald-600/40"
-            >
-              Create a free account
-              <ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              nativeButton={false}
-              render={<Link href="/docs/api" />}
-              className="h-11 px-6 text-base"
-            >
-              Read the API docs
-            </Button>
+          <div style={delay(0.18)} className="klv-rise mt-9 flex flex-col gap-3 sm:flex-row">
+            <CtaLink href="/signup" arrow>
+              Get started
+            </CtaLink>
+            <CtaLink href="#how-it-works" variant="outline">
+              See how it works
+            </CtaLink>
           </div>
-
-          <ul className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-zinc-600 lg:justify-start">
-            {POINTS.map((point) => (
-              <li key={point} className="flex items-center gap-1.5">
-                <CheckIcon className="size-4 text-emerald-600" aria-hidden="true" />
-                {point}
-              </li>
-            ))}
-          </ul>
         </div>
 
-        <AutomationPreview className="mx-auto w-full max-w-md lg:max-w-none" />
+        <MockStage className="mx-auto w-full max-w-md lg:max-w-none">
+          <LivePanel />
+        </MockStage>
+      </div>
+
+      <div className="mx-auto mt-24 w-full max-w-6xl px-4 sm:mt-32 sm:px-6">
+        <EditorMockup />
+      </div>
+
+      <div className="mx-auto w-full max-w-6xl px-4 pt-16 pb-4 sm:px-6 sm:pt-20 lg:pt-28">
+        <p className="text-center text-sm text-zinc-500">Sends through the provider you already trust</p>
+        <ul
+          aria-label="Supported sending providers"
+          className="mx-auto mt-6 flex max-w-4xl flex-wrap items-center justify-center gap-x-10 gap-y-4"
+        >
+          {PROVIDERS.map((name) => (
+            <li key={name} className="text-lg font-semibold tracking-tight text-zinc-500 sm:text-xl">
+              {name}
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Loader2, PencilRuler, Plus, Sparkles } from "lucide-react";
 import { createAutomationAction } from "@/app/actions/automations";
+import { Glyph } from "@/components/brand/glyph";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -57,9 +58,7 @@ export function CreateAutomationButton({ className, label = "Create automation" 
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <Link href="/automations/new" className={choice} onClick={() => setOpen(false)}>
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                <Sparkles className="size-4.5" aria-hidden />
-              </span>
+              <Glyph icon={Sparkles} className="mt-0.5" />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-zinc-900">Start from a recipe</span>
                 <span className="mt-0.5 block text-xs text-zinc-500">
@@ -69,9 +68,11 @@ export function CreateAutomationButton({ className, label = "Create automation" 
               <ChevronRight className="mt-2 size-4 shrink-0 text-zinc-400" aria-hidden />
             </Link>
             <button type="button" className={cn(choice, pending && "opacity-70")} onClick={fromScratch} disabled={pending}>
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-                {pending ? <Loader2 className="size-4.5 animate-spin" aria-hidden /> : <PencilRuler className="size-4.5" aria-hidden />}
-              </span>
+              {pending ? (
+                <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-zinc-400" aria-hidden />
+              ) : (
+                <Glyph icon={PencilRuler} tone="muted" className="mt-0.5" />
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-zinc-900">Start from scratch</span>
                 <span className="mt-0.5 block text-xs text-zinc-500">One trigger and one email to begin with. Add steps as you like.</span>

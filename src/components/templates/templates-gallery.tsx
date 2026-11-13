@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, FilePlus2, LayoutTemplate, Loader2, Palette, Plus, Search, SearchX } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { toast } from "sonner";
 import { createTemplateAction } from "@/app/actions/templates";
 import { StarterCard } from "@/components/templates/starter-card";
@@ -242,9 +243,7 @@ function MyTemplatesEmpty({
 }) {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-14 text-center sm:py-20">
-      <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-        <LayoutTemplate className="size-7" aria-hidden />
-      </span>
+      <Glyph icon={LayoutTemplate} size="xl" strokeWidth={1.5} className="size-10" />
       <h2 className="mt-5 text-lg font-semibold text-zinc-900">No templates yet</h2>
       <p className="mt-1.5 max-w-md text-sm text-zinc-500">
         Pick a ready-made starter (it&apos;s already in your brand) or design your own from scratch. You can reuse

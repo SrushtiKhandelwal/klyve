@@ -9,6 +9,7 @@ import { activateAutomationAction, duplicateAutomationAction, pauseAutomationAct
 import { ActivationProblemsDialog, DeleteAutomationDialog } from "@/components/automations/automation-dialogs";
 import { AutomationStatusBadge } from "@/components/automations/automation-status-badge";
 import { TRIGGER_ICONS } from "@/components/automations/icons";
+import { Glyph } from "@/components/brand/glyph";
 import type { Part } from "@/components/automations/describe";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,15 +82,15 @@ export function AutomationRow({ automation, canManage }: { automation: Automatio
   }
 
   return (
-    <li className="group relative flex items-start gap-3 rounded-xl border bg-white p-4 transition-shadow hover:shadow-md sm:items-center">
-      <span
-        className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-xl",
-          automation.status === "ACTIVE" ? "bg-emerald-50 text-emerald-600" : "bg-zinc-100 text-zinc-500",
-        )}
-      >
-        <Icon className="size-5" aria-hidden />
-      </span>
+    <li className="group relative flex items-start gap-4 rounded-xl border bg-white p-4 transition-shadow hover:shadow-md sm:items-center">
+      {/* What starts it, as a bare icon: green when it's on, grey when it isn't. */}
+      <Glyph
+        icon={Icon}
+        size="lg"
+        strokeWidth={1.5}
+        tone={automation.status === "ACTIVE" ? "brand" : "muted"}
+        className="mt-0.5 sm:mt-0"
+      />
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

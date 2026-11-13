@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BarChart3Icon, BookOpenIcon, CodeIcon, InboxIcon, KeyRoundIcon, SearchX, SendIcon, TagIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { DailyChart } from "@/components/transactional/daily-chart";
 import { EmailLogList } from "@/components/transactional/email-log-list";
@@ -179,9 +180,7 @@ const STEPS = [
 function TransactionalEmpty({ testOptions }: { testOptions: TestSendOptions }) {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-12 text-center sm:py-16">
-      <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-        <SendIcon className="size-7" aria-hidden />
-      </span>
+      <Glyph icon={SendIcon} size="xl" strokeWidth={1.5} className="size-10" />
       <h2 className="mt-5 text-lg font-semibold text-zinc-900">Send your first email with the API</h2>
       <p className="mt-1.5 max-w-md text-sm text-zinc-500">
         Receipts, password resets and order updates, sent from your own app through your own provider, in three steps.
@@ -189,12 +188,10 @@ function TransactionalEmpty({ testOptions }: { testOptions: TestSendOptions }) {
       <ol className="mt-8 grid w-full max-w-3xl gap-3 text-left sm:grid-cols-3">
         {STEPS.map((step, i) => (
           <li key={step.title} className="flex gap-3 rounded-xl border bg-zinc-50/60 p-4">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white">
-              {i + 1}
-            </span>
+            <Glyph icon={step.icon} size="sm" className="mt-0.5" />
             <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-sm font-medium text-zinc-900">
-                <step.icon className="size-4 text-emerald-600" aria-hidden />
+              <p className="text-sm font-medium text-zinc-900">
+                <span className="mr-1.5 text-zinc-400 tabular-nums">{i + 1}.</span>
                 {step.title}
               </p>
               <p className="mt-1 text-xs text-zinc-500">{step.text}</p>

@@ -17,6 +17,7 @@
 //            End
 import { Fragment } from "react";
 import { CircleAlert, Flag, Plus, Zap } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,9 +61,7 @@ export function Flow(props: FlowProps) {
           className="border-emerald-200 bg-emerald-50/50"
           ariaLabel="Edit the trigger"
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
-            <TriggerIcon className="size-4.5" aria-hidden />
-          </span>
+          <Glyph icon={TriggerIcon} size="lg" strokeWidth={1.5} />
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-1 text-[11px] font-semibold tracking-wide text-emerald-700 uppercase">
               <Zap className="size-3" aria-hidden />
@@ -107,9 +106,7 @@ function StepNode(props: FlowProps & { step: AutomationStep }) {
   const Icon = STEP_ICONS[step.type];
   const card = (
     <NodeButton selected={selectedId === step.id} onClick={() => onSelect(step.id)} ariaLabel={`Edit step: ${STEP_LABELS[step.type]}`}>
-      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", STEP_TONES[step.type])}>
-        <Icon className="size-4.5" aria-hidden />
-      </span>
+      <Glyph icon={Icon} size="lg" tone="current" strokeWidth={1.5} className={STEP_TONES[step.type]} />
       <span className="min-w-0 flex-1">
         <span className="block text-[11px] font-semibold tracking-wide text-zinc-500 uppercase">{STEP_LABELS[step.type]}</span>
         <Sentence parts={stepParts(step, steps, lookups)} />
@@ -197,9 +194,7 @@ function Connector(props: FlowProps & { container: ContainerRef; index: number }
             const Icon = STEP_ICONS[type];
             return (
               <DropdownMenuItem key={type} disabled={!!blocker} onClick={() => onInsert(container, index, type)} className="items-start">
-                <span className={cn("mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md", STEP_TONES[type])}>
-                  <Icon className="size-3.5" aria-hidden />
-                </span>
+                <Glyph icon={Icon} size="sm" tone="current" className={cn("mt-0.5", STEP_TONES[type])} />
                 <span className="flex min-w-0 flex-col">
                   <span className="text-sm">{STEP_LABELS[type]}</span>
                   <span className="text-xs text-zinc-500">{blocker ?? NEW_STEP_HINTS[type]}</span>

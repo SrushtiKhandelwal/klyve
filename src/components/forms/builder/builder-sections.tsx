@@ -4,6 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { CircleAlert, Info, MailCheck, ShieldCheck } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { ColorField } from "@/components/settings/brand/color-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -33,9 +34,7 @@ export function BuilderSection({
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-6 rounded-xl border bg-white">
       <div className="flex items-start gap-3 border-b px-4 py-3.5 sm:px-5">
-        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-          <Icon className="size-4" aria-hidden />
-        </span>
+        <Glyph icon={Icon} className="mt-0.5" />
         <div className="min-w-0">
           <h2 id={`${id}-title`} className="font-semibold text-zinc-900">
             {title}

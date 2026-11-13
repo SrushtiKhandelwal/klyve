@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Check, FilePlus2, LayoutTemplate, Loader2, Search, SearchX, Sparkles } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { toast } from "sonner";
 import { createCampaignAction } from "@/app/actions/campaigns";
 import { EmailThumbnail, SavedTemplateThumbnail } from "@/components/templates/email-thumbnail";
@@ -142,7 +143,7 @@ export function NewCampaignForm({
           <TabsContent value="mine" className="flex flex-col gap-4">
             {templates.length === 0 ? (
               <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-10 text-center">
-                <LayoutTemplate className="size-8 text-zinc-400" aria-hidden />
+                <Glyph icon={LayoutTemplate} size="xl" strokeWidth={1.5} />
                 <p className="mt-3 font-medium text-zinc-900">You haven&apos;t saved any templates yet</p>
                 <p className="mt-1 max-w-sm text-sm text-zinc-500">Pick one of our starters instead. It&apos;s already in your brand.</p>
                 <Button type="button" variant="outline" className="mt-4" onClick={() => setTab("starters")}>
@@ -217,9 +218,7 @@ export function NewCampaignForm({
                 source.kind === "blank" ? "border-emerald-500 ring-2 ring-emerald-500/30" : "hover:border-zinc-300",
               )}
             >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                <FilePlus2 className="size-5" aria-hidden />
-              </span>
+              <Glyph icon={FilePlus2} size="lg" strokeWidth={1.5} />
               <span className="min-w-0 flex-1">
                 <span className="block font-medium text-zinc-900">Blank email</span>
                 <span className="mt-0.5 block text-sm text-zinc-500">
@@ -235,7 +234,7 @@ export function NewCampaignForm({
       {/* Stays in view while scrolling the gallery, so the next step is always one tap away. */}
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-3 border-t bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:rounded-xl sm:border sm:px-5">
         <p className="flex min-w-0 items-center gap-2 text-sm text-zinc-600">
-          <Sparkles className="size-4 shrink-0 text-emerald-600" aria-hidden />
+          <Glyph icon={Sparkles} size="sm" />
           <span className="min-w-0 truncate">
             Starting from: <span className="font-medium text-zinc-900">{sourceLabel}</span>
           </span>

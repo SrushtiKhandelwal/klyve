@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SearchX, Upload, Users } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { ContactCreateDialog } from "@/components/contacts/contact-create-dialog";
 import { ContactsTable, type ContactsTableRow } from "@/components/contacts/contacts-table";
@@ -60,7 +61,8 @@ async function ContactsContent({ searchParams }: { searchParams: SearchParams })
       title={
         <>
           Contacts
-          <span className="ml-3 inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 align-middle text-sm font-medium tracking-normal text-emerald-700 tabular-nums">
+          {/* The total as quiet grey text next to the title (no pill). */}
+          <span className="ml-2.5 font-normal tracking-normal text-zinc-400 tabular-nums">
             {workspaceTotal.toLocaleString("en")}
           </span>
         </>
@@ -76,9 +78,7 @@ async function ContactsContent({ searchParams }: { searchParams: SearchParams })
       <>
         {header}
         <div className="flex flex-col items-center rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-14 text-center sm:py-20">
-          <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-            <Users className="size-7" />
-          </span>
+          <Glyph icon={Users} size="xl" strokeWidth={1.5} className="size-10" />
           <h2 className="mt-5 text-lg font-semibold text-zinc-900">No contacts yet</h2>
           <p className="mt-1.5 max-w-md text-sm text-zinc-500">
             Import a CSV from your spreadsheet or CRM, or add people one at a time.

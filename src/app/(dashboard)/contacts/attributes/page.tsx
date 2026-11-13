@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import type { Metadata } from "next";
 import { InfoIcon, LockIcon, TagsIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { AttributeActions } from "@/components/contacts/attributes/attribute-actions";
 import { CreateAttributeDialog } from "@/components/contacts/attributes/create-attribute-dialog";
 import { PersonalizationTag } from "@/components/contacts/attributes/personalization-tag";
@@ -69,9 +70,7 @@ async function FieldsSections() {
       >
         {attributes.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-12 text-center">
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-              <TagsIcon className="size-6" />
-            </span>
+            <Glyph icon={TagsIcon} size="xl" strokeWidth={1.5} />
             <h3 className="mt-4 font-semibold text-zinc-900">No custom fields yet</h3>
             <p className="mt-1 max-w-sm text-sm text-zinc-500">
               Create a field such as “City” to store it for each contact, then write{" "}

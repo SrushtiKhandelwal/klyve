@@ -4,8 +4,9 @@
 // step. Each change is reported up straight away (the builder autosaves).
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, CircleAlert, Paintbrush, Send, Trash2, Zap } from "lucide-react";
+import { ArrowDown, ArrowUp, CircleAlert, Paintbrush, Send, Trash2, Zap, type LucideIcon } from "lucide-react";
 import { previewDocument } from "@/app/actions/render";
+import { Glyph } from "@/components/brand/glyph";
 import { MergeTagTextField } from "@/components/editor/controls";
 import { EmailThumbnail } from "@/components/templates/email-thumbnail";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ import {
   type SendEmailStep,
 } from "@/lib/automations/schema";
 import type { MergeTag } from "@/lib/templates/document";
-import { cn } from "@/lib/utils";
 import { STEP_LABELS, TRIGGER_LABELS, fieldLabel, type Lookups } from "../describe";
 import { STEP_ICONS, STEP_TONES } from "../icons";
 import { Explainer, Picker, TextField, WholeNumberField, type Option } from "./fields";
@@ -58,7 +58,7 @@ export function TriggerSettings({
 
   return (
     <PanelBody>
-      <PanelTitle icon={<Zap className="size-4" aria-hidden />} tone="bg-emerald-600 text-white" title="Trigger" subtitle="What starts the automation for someone." />
+      <PanelTitle icon={Zap} title="Trigger" subtitle="What starts the automation for someone." />
       <Picker label="Start when someone…" value={trigger.type} options={typeOptions} onChange={changeType} disabled={readOnly} />
 
       {trigger.type === "list_joined" && (
@@ -155,7 +155,7 @@ export function StepSettings(props: StepSettingsProps) {
   return (
     <PanelBody>
       <PanelTitle
-        icon={<Icon className="size-4" aria-hidden />}
+        icon={Icon}
         tone={STEP_TONES[step.type]}
         title={STEP_LABELS[step.type]}
         subtitle={loc && loc.depth > 1 ? "Inside an if/else path" : "On the main path"}
@@ -491,10 +491,11 @@ function PanelBody({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col gap-4">{children}</div>;
 }
 
-function PanelTitle({ icon, tone, title, subtitle }: { icon: React.ReactNode; tone: string; title: string; subtitle: string }) {
+/** Bare icon + title. `tone` is a text colour (the step type's); none = Klyve green. */
+function PanelTitle({ icon, tone, title, subtitle }: { icon: LucideIcon; tone?: string; title: string; subtitle: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tone)}>{icon}</span>
+      <Glyph icon={icon} size="lg" strokeWidth={1.5} tone={tone ? "current" : "brand"} className={tone} />
       <div className="min-w-0">
         <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
         <p className="text-xs text-zinc-500">{subtitle}</p>

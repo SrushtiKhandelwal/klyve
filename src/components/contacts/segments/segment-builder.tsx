@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CopyIcon, Loader2Icon, PlusIcon, TriangleAlertIcon, UsersIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { toast } from "sonner";
 import {
   duplicateSegment,
@@ -384,9 +385,7 @@ function PreviewBody({
     // Dim the old numbers while the new ones load.
     <div className={cn("transition-opacity", !current && "opacity-60")}>
       <div className="flex items-center gap-3 px-5 py-4">
-        <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-          <UsersIcon className="size-5" />
-        </span>
+        <Glyph icon={UsersIcon} size="lg" strokeWidth={1.5} />
         <div>
           <p className="text-2xl font-semibold text-zinc-900 tabular-nums">{result.count.toLocaleString()}</p>
           <p className="text-xs text-zinc-500">

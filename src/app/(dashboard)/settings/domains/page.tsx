@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { GlobeIcon, InfoIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { AddDomainForm } from "@/components/settings/domains/add-domain-form";
 import { DomainCard, type DomainView } from "@/components/settings/domains/domain-card";
@@ -61,9 +62,7 @@ async function DomainsSection() {
 
       {views.length === 0 ? (
         <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-12 text-center">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-            <GlobeIcon className="size-6" />
-          </span>
+          <Glyph icon={GlobeIcon} size="xl" strokeWidth={1.5} />
           <h3 className="mt-4 font-semibold text-zinc-900">No domains yet</h3>
           <p className="mt-1 max-w-sm text-sm text-zinc-500">
             {canManage

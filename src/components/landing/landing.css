@@ -1,0 +1,194 @@
+/* Small effects used only on the landing page.
+ *
+ * A plain stylesheet rather than Tailwind classes because two of these need
+ * @keyframes. It is not a CSS module: the Turbopack rule in next.config.ts
+ * turns every .css file into plain CSS, so the class names are prefixed
+ * "klv-" to keep them from clashing with anything else. Components that use
+ * them import this file (`import "@/components/landing/landing.css"`).
+ *
+ * Motion is kept quiet and is switched off entirely for visitors whose system
+ * asks for reduced motion. */
+
+/* A very faint grid of hairlines, fading out towards the edges. Used behind
+   the hero and the closing call to action. */
+.klv-grid {
+  background-image:
+    linear-gradient(to right, rgb(9 9 11 / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(9 9 11 / 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: center top;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 0%, #000 20%, transparent 75%);
+}
+
+/* Fine dots behind the product mock-ups. */
+.klv-dots {
+  background-image: radial-gradient(rgb(9 9 11 / 0.08) 1px, transparent 1px);
+  background-size: 16px 16px;
+  mask-image: radial-gradient(closest-side, #000 40%, transparent);
+}
+
+/* A short emerald segment travelling down a connector line in the automation
+   mock-up, to show the flow. The parent must be `relative overflow-hidden`. */
+.klv-pulse {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 40%;
+  background: #10b981;
+  animation: klv-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes klv-pulse {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(260%);
+    opacity: 0;
+  }
+}
+
+/* The hero's text settling into place on first load. Only when motion is
+   welcome, so with reduced motion the text is simply there. */
+@media (prefers-reduced-motion: no-preference) {
+  .klv-rise {
+    animation: klv-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: var(--rise-delay, 0s);
+  }
+}
+
+@keyframes klv-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .klv-pulse {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* The hero's "live" panel (mockups/live-panel.tsx)                     */
+/* ------------------------------------------------------------------ */
+/* Every element's normal style is its FINISHED state, and the animations
+   only describe where it starts from. So with reduced motion (no animation)
+   visitors simply see the complete picture. The sequence plays once on load:
+   sending reaches 100%, then the rates tick up and activity rows arrive. */
+
+/* Numbers that count up. A registered integer property can be animated, and
+   a CSS counter prints it (in ::after, so it's purely visual). */
+@property --klv-n {
+  syntax: "<integer>";
+  initial-value: 0;
+  inherits: false;
+}
+
+.klv-count {
+  counter-reset: klv-n var(--klv-n);
+}
+
+.klv-count::after {
+  content: counter(klv-n);
+}
+
+.klv-count-sent {
+  --klv-n: 100;
+}
+
+.klv-count-opens {
+  --klv-n: 46;
+}
+
+.klv-count-clicks {
+  --klv-n: 11;
+}
+
+.klv-bar {
+  transform-origin: left center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .klv-count-sent {
+    animation: klv-count-sent 2.6s cubic-bezier(0.3, 0.6, 0.3, 1) 0.5s both;
+  }
+
+  .klv-count-opens {
+    animation: klv-count-opens 7s ease-out 3s both;
+  }
+
+  .klv-count-clicks {
+    animation: klv-count-clicks 7s ease-out 3.6s both;
+  }
+
+  .klv-bar {
+    animation: klv-bar 2.6s cubic-bezier(0.3, 0.6, 0.3, 1) 0.5s both;
+  }
+
+  /* The sparkline is revealed from left to right. */
+  .klv-draw {
+    animation: klv-draw 3.5s ease-out 3s both;
+  }
+
+  /* An activity row arriving: fades in from just above, briefly tinted. */
+  .klv-feed-row {
+    animation: klv-feed-row 2.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: var(--feed-delay, 0s);
+  }
+}
+
+@keyframes klv-count-sent {
+  from {
+    --klv-n: 0;
+  }
+}
+
+@keyframes klv-count-opens {
+  from {
+    --klv-n: 38;
+  }
+}
+
+@keyframes klv-count-clicks {
+  from {
+    --klv-n: 7;
+  }
+}
+
+@keyframes klv-bar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes klv-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+@keyframes klv-feed-row {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+    background-color: rgb(236 253 245);
+  }
+  25% {
+    opacity: 1;
+    transform: none;
+    background-color: rgb(236 253 245);
+  }
+  100% {
+    background-color: transparent;
+  }
+}

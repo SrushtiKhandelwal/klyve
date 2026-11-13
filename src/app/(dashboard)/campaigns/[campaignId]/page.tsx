@@ -194,7 +194,7 @@ function CampaignSkeleton() {
       </div>
       {Array.from({ length: 4 }, (_, i) => (
         <div key={i} className="flex items-center gap-4 rounded-xl border bg-white p-5">
-          <Skeleton className="size-9 rounded-full" />
+          <Skeleton className="size-5 rounded-md" />
           <div className="flex flex-1 flex-col gap-1.5">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-3 w-56 max-w-full" />

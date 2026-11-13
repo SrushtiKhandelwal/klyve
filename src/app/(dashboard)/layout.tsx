@@ -89,7 +89,8 @@ function SidebarContents() {
         </Suspense>
       </div>
 
-      <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-5 md:max-lg:px-2">
+      {/* The list scrolls inside SidebarNav, with Settings pinned below it. */}
+      <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col">
         {/* usePathname needs this boundary on pages with dynamic URLs. */}
         <Suspense fallback={<SidebarNavFallback />}>
           <SidebarNav />

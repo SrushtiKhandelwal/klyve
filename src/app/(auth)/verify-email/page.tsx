@@ -6,6 +6,7 @@ import { CircleCheckIcon, MailIcon, TriangleAlertIcon } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Glyph } from "@/components/brand/glyph";
 import { ResendVerificationButton } from "@/components/auth/resend-verification-button";
 
 export const metadata: Metadata = {
@@ -105,9 +106,9 @@ function ResendOrLogin({ email }: { email?: string }) {
 }
 
 const TONES = {
-  success: { icon: CircleCheckIcon, circle: "bg-emerald-100 text-emerald-700" },
-  error: { icon: TriangleAlertIcon, circle: "bg-amber-100 text-amber-700" },
-  info: { icon: MailIcon, circle: "bg-emerald-100 text-emerald-700" },
+  success: { icon: CircleCheckIcon, tone: "brand" },
+  error: { icon: TriangleAlertIcon, tone: "amber" },
+  info: { icon: MailIcon, tone: "brand" },
 } as const;
 
 function Status({
@@ -121,11 +122,16 @@ function Status({
   text: string;
   children: ReactNode;
 }) {
-  const { icon: Icon, circle } = TONES[tone];
+  const { icon, tone: iconTone } = TONES[tone];
   return (
     <div role={tone === "error" ? "alert" : "status"} className="grid gap-5 text-center">
-      <div className={`mx-auto flex size-12 items-center justify-center rounded-full ${circle}`}>
-        <Icon className="size-6" aria-hidden="true" />
+      {/* A bare icon (no circle behind it): Klyve's icon style. */}
+      <div className="mx-auto">
+        {iconTone === "amber" ? (
+          <Glyph icon={icon} size="xl" tone="current" className="text-amber-600" />
+        ) : (
+          <Glyph icon={icon} size="xl" />
+        )}
       </div>
       <div className="grid gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Loader2Icon, MailCheckIcon } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/auth/form-field";
@@ -46,9 +47,7 @@ export function ForgotPasswordForm() {
   if (sentTo) {
     return (
       <div className="grid gap-5 text-center">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-          <MailCheckIcon className="size-6" aria-hidden="true" />
-        </div>
+        <Glyph icon={MailCheckIcon} size="xl" strokeWidth={1.5} className="mx-auto" />
         {/* Deliberately the same message for every email address, so this
             page can't be used to find out who has an account. */}
         <p role="status" className="text-sm text-muted-foreground">

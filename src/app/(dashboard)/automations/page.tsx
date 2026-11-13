@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Cake, HeartHandshake, PartyPopper, Workflow } from "lucide-react";
 import { AutomationRow, type AutomationRowData } from "@/components/automations/automation-row";
+import { Glyph } from "@/components/brand/glyph";
 import { CreateAutomationButton } from "@/components/automations/create-automation-button";
 import { triggerParts } from "@/components/automations/describe";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
@@ -95,21 +96,20 @@ const IDEAS = [
 function AutomationsEmpty() {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-12 text-center sm:py-16">
-      <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-        <Workflow className="size-7" aria-hidden />
-      </span>
+      <Glyph icon={Workflow} size="xl" strokeWidth={1.5} className="size-10" />
       <h2 className="mt-5 text-lg font-semibold text-zinc-900">Put your emails on autopilot</h2>
       <p className="mt-1.5 max-w-md text-sm text-zinc-500">
         An automation waits for something to happen, like someone joining a list, and then sends the right emails at the
         right time, on its own. Set it up once and it keeps working.
       </p>
-      <span className="mt-4 inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/15">
+      <p className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-emerald-700">
+        <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
         Free on Klyve. Paid on most other tools.
-      </span>
+      </p>
       <ul className="mt-8 grid w-full max-w-3xl gap-3 text-left sm:grid-cols-3">
         {IDEAS.map((idea) => (
           <li key={idea.title} className="flex gap-3 rounded-xl border bg-zinc-50/60 p-4">
-            <idea.icon className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden />
+            <Glyph icon={idea.icon} size="sm" className="mt-0.5" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-zinc-900">{idea.title}</p>
               <p className="mt-1 text-xs text-zinc-500">{idea.text}</p>
@@ -129,7 +129,7 @@ function AutomationsSkeleton() {
       <div className="flex flex-col gap-3">
         {Array.from({ length: 3 }, (_, i) => (
           <div key={i} className="flex items-center gap-3 rounded-xl border bg-white p-4">
-            <Skeleton className="size-10 rounded-xl" />
+            <Skeleton className="size-6 rounded-md" />
             <div className="flex flex-1 flex-col gap-2">
               <Skeleton className="h-4 w-1/3" />
               <Skeleton className="h-3 w-2/3" />

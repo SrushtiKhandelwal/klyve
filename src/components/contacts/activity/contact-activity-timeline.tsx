@@ -14,10 +14,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { loadOlderContactActivity } from "@/app/(dashboard)/contacts/[contactId]/actions";
+import { Glyph } from "@/components/brand/glyph";
 import { Button } from "@/components/ui/button";
 import type { ContactActivityKind } from "@/lib/contacts/activity";
 import { EVENT_TYPE_META } from "@/lib/tracking/metrics";
-import { cn } from "@/lib/utils";
 import type { ActivityItemView, ActivityPageView } from "./activity-view";
 
 const ICONS: Record<ContactActivityKind, LucideIcon> = {
@@ -29,9 +29,13 @@ const ICONS: Record<ContactActivityKind, LucideIcon> = {
   UNSUBSCRIBED: UserMinusIcon,
 };
 
-/** Icon colours: "Sent" is neutral, the rest reuse the report colours. */
+/**
+ * Icon colour: "Sent" is neutral, the rest reuse the report colours (just the
+ * text colour from the report's label style, e.g. "text-sky-700").
+ */
 function iconClass(kind: ContactActivityKind): string {
-  return kind === "SENT" ? "bg-zinc-100 text-zinc-600 ring-zinc-500/20" : EVENT_TYPE_META[kind].className;
+  if (kind === "SENT") return "text-zinc-400";
+  return EVENT_TYPE_META[kind].className.split(" ").find((c) => c.startsWith("text-")) ?? "text-zinc-500";
 }
 
 /** The contact's email history, newest first, with a "Show older" button. */
@@ -109,13 +113,9 @@ function TimelineItem({ item, last }: { item: ActivityItemView; last: boolean })
     <li className="relative flex gap-3 pb-4 last:pb-0">
       {/* The thin line joining the icons. */}
       {!last && <span aria-hidden className="absolute top-8 bottom-0 left-[13px] w-px bg-zinc-200" />}
-      <span
-        className={cn(
-          "relative flex size-7 shrink-0 items-center justify-center rounded-full ring-1 ring-inset",
-          iconClass(item.kind),
-        )}
-      >
-        <Icon className="size-3.5" aria-hidden />
+      {/* A bare icon in the event's colour (no circle behind it). */}
+      <span className="relative flex size-7 shrink-0 items-center justify-center">
+        <Glyph icon={Icon} size="sm" tone="current" strokeWidth={2} className={iconClass(item.kind)} />
       </span>
       <div className="min-w-0 flex-1 pt-0.5 text-sm text-zinc-600">
         <p className="break-words">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Cake, CalendarDays, ClipboardList, HeartHandshake, Mail, PartyPopper, Zap } from "lucide-react";
+import { Glyph } from "@/components/brand/glyph";
 import { RECIPE_CATEGORIES, RECIPES, type RecipeCategory } from "@/lib/automations/recipes/catalog";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -52,9 +53,7 @@ export function RecipeGallery() {
           return (
             <li key={r.id} className="flex min-w-0 flex-col gap-3 rounded-xl border bg-white p-4 sm:p-5">
               <div className="flex items-center gap-2">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                  <Icon aria-hidden className="size-4" />
-                </span>
+                <Glyph icon={Icon} size="sm" />
                 <span className="text-xs font-medium text-emerald-700">{r.category}</span>
               </div>
               <div className="flex flex-1 flex-col gap-1">
