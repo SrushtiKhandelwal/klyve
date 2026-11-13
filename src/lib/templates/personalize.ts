@@ -104,6 +104,8 @@ export type MergeData = {
   preferences_url: string;
   current_year: number;
   workspace: { name: string };
+  /** Values sent with a transactional API call: {{ params.order_id }}. Absent for campaigns. */
+  params?: Record<string, unknown>;
 };
 
 export type MergeContact = {
@@ -309,6 +311,7 @@ const KNOWN_ROOTS = new Set([
   "current_year",
   "workspace",
   "tracking",
+  "params",
 ]);
 const BUILTIN_KEYS = new Set<string>(BUILTIN_FIELDS.map((f) => f.key));
 

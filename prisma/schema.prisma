@@ -126,6 +126,8 @@ model Workspace {
 
   signupForms SignupForm[]
   automations Automation[]
+  apiKeys     ApiKey[]
+  transactionalEmails TransactionalEmail[]
 
   @@map("workspace")
 }
@@ -184,6 +186,7 @@ model Contact {
   consentEvents      ConsentEvent[]
   automationRuns     AutomationRun[]
 
+  transactionalEmails TransactionalEmail[]
   @@unique([workspaceId, email])
   @@index([workspaceId, createdAt])
   @@index([workspaceId, status])
@@ -351,6 +354,7 @@ model SendingProvider {
   campaigns  Campaign[]
   dailyUsage ProviderDailyUsage[]
 
+  transactionalEmails TransactionalEmail[]
   @@unique([workspaceId, name])
   @@index([workspaceId])
   @@map("sending_provider")
@@ -381,6 +385,7 @@ model Sender {
 
   campaigns Campaign[]
 
+  transactionalEmails TransactionalEmail[]
   @@unique([workspaceId, email])
   @@map("sender")
 }
@@ -427,6 +432,7 @@ model EmailTemplate {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  transactionalEmails TransactionalEmail[]
   @@index([workspaceId, updatedAt])
   @@map("email_template")
 }
@@ -931,4 +937,89 @@ model AutomationLog {
 
   @@index([runId, createdAt])
   @@map("automation_log")
+}
+
+// ─────────────────────────────────────────────
+// Phase 9: Transactional API
+// ─────────────────────────────────────────────
+
+/// A secret key a workspace's own app uses to call the Klyve API.
+/// Only a SHA-256 hash is stored: the key itself is shown once, when created.
+model ApiKey {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  /// The first characters (e.g. "klv_3fA9x2"), shown so people can tell keys apart.
+  prefix      String
+  /// SHA-256 (hex) of the full key.
+  keyHash     String    @unique
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  emails TransactionalEmail[]
+
+  @@index([workspaceId, createdAt])
+  @@map("api_key")
+}
+
+enum TransactionalStatus {
+  QUEUED // accepted, waiting for the worker
+  SENDING // handed to the provider right now
+  SENT // the provider accepted it
+  FAILED // gave up after retries (or a permanent error)
+  SUPPRESSED // not sent: the address hard-bounced, complained, or was erased
+  BOUNCED // sent, then the provider reported a bounce
+  COMPLAINED // sent, then the person marked it as spam
+}
+
+/// One email sent through the API (a receipt, a password reset, ...), and its log.
+model TransactionalEmail {
+  id                String              @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  apiKeyId          String?
+  apiKey            ApiKey?             @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  /// "api" or "dashboard" (a test sent from the logs page).
+  source            String              @default("api")
+  /// From the Idempotency-Key header: the same key twice = the same email, sent once.
+  idempotencyKey    String?
+  toEmail           String
+  toName            String?
+  contactId         String?
+  contact           Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  senderId          String?
+  sender            Sender?             @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  providerId        String?
+  provider          SendingProvider?    @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  templateId        String?
+  template          EmailTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  fromEmail         String
+  fromName          String
+  replyTo           String?
+  subject           String
+  /// Final, personalised content. Cleared after 30 days (privacy + disk space).
+  html              String
+  text              String
+  tags              String[]
+  metadata          Json?
+  status            TransactionalStatus @default(QUEUED)
+  attempts          Int                 @default(0)
+  nextAttemptAt     DateTime            @default(now())
+  lockedAt          DateTime?
+  lastError         String?
+  providerMessageId String?
+  sentAt            DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([workspaceId, idempotencyKey])
+  @@index([status, nextAttemptAt])
+  @@index([workspaceId, createdAt])
+  @@index([apiKeyId, createdAt])
+  @@index([providerMessageId])
+  @@index([contactId])
+  @@map("transactional_email")
 }

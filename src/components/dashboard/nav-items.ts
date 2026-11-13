@@ -3,6 +3,7 @@ import {
   FileText,
   House,
   Megaphone,
+  Send,
   Settings,
   Users,
   Workflow,
@@ -20,5 +21,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/templates", label: "Templates", icon: FileText },
   { href: "/forms", label: "Forms", icon: ClipboardList },
   { href: "/automations", label: "Automations", icon: Workflow },
+  { href: "/transactional", label: "Transactional", icon: Send },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
