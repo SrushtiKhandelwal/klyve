@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { GlyphGradientDefs } from "@/components/brand/glyph";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BRAND } from "@/lib/brand";
@@ -29,6 +30,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* The gradient every <Glyph> icon is painted with (defined once). */}
+        <GlyphGradientDefs />
         {/* Lets any component use <Tooltip> hover hints. */}
         <TooltipProvider>{children}</TooltipProvider>
         {/* Pop-up notifications. Call toast("...") from "sonner" anywhere. */}
