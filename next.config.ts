@@ -14,6 +14,17 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "2mb",
     },
   },
+  async headers() {
+    return [
+      {
+        // Public sign-up forms (/f/<id>) are meant to be embedded in an
+        // <iframe> on the user's own website, so ANY site may frame them.
+        // Every other page keeps the browser default.
+        source: "/f/:path*",
+        headers: [{ key: "Content-Security-Policy", value: "frame-ancestors *" }],
+      },
+    ];
+  },
   turbopack: {
     rules: {
       "*.css": {

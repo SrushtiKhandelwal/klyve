@@ -13,6 +13,7 @@ const PROTECTED_PATHS = [
   "/contacts",
   "/campaigns",
   "/templates",
+  "/forms",
   "/automations",
   "/settings",
   "/onboarding",
