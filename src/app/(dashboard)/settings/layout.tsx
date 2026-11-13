@@ -3,13 +3,18 @@ import { SectionTabs, SectionTabsFallback, type SectionTab } from "@/components/
 
 const SETTINGS_TABS: SectionTab[] = [
   { href: "/settings", label: "General" },
+  { href: "/settings/profile", label: "Profile" },
+  { href: "/settings/team", label: "Team" },
+  { href: "/settings/security", label: "Security" },
   { href: "/settings/providers", label: "Sending providers" },
   { href: "/settings/senders", label: "Senders" },
   { href: "/settings/domains", label: "Domains" },
   { href: "/settings/brand", label: "Brand" },
+  { href: "/settings/tracking", label: "Link tracking" },
   { href: "/settings/compliance", label: "Compliance" },
   { href: "/settings/deliverability", label: "Deliverability" },
   { href: "/settings/api", label: "API keys" },
+  { href: "/settings/ai", label: "AI" },
 ];
 
 // Shared frame for Settings: tabs on top, the current tab's page below.

@@ -1,5 +1,7 @@
 import {
+  ChartColumn,
   ClipboardList,
+  Images,
   FileText,
   House,
   Megaphone,
@@ -25,8 +27,10 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/forms", label: "Forms", icon: ClipboardList, group: "Audience" },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone, group: "Messages" },
   { href: "/templates", label: "Templates", icon: FileText, group: "Messages" },
+  { href: "/library", label: "Media", icon: Images, group: "Messages" },
   { href: "/automations", label: "Automations", icon: Workflow, group: "Messages" },
   { href: "/transactional", label: "Transactional", icon: Send, group: "Messages" },
+  { href: "/statistics", label: "Statistics", icon: ChartColumn, group: "Messages" },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

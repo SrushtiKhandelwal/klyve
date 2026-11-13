@@ -16,6 +16,8 @@ const PROTECTED_PATHS = [
   "/forms",
   "/automations",
   "/transactional",
+  "/statistics",
+  "/library",
   "/settings",
   "/onboarding",
 ];

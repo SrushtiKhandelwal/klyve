@@ -23,11 +23,32 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now()) @updatedAt
 
+  /// Two-factor login (Better Auth "twoFactor" plugin).
+  twoFactorEnabled Boolean? @default(false)
+
   sessions    Session[]
   accounts    Account[]
   memberships WorkspaceMember[]
+  twoFactors  TwoFactor[]
 
   @@map("user")
+}
+
+/// The authenticator-app secret and backup codes of a user with 2FA turned on
+/// (managed entirely by Better Auth's twoFactor plugin; both are encrypted).
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
+  @@index([secret])
+  @@index([userId])
+  @@map("two_factor")
 }
 
 model Session {
@@ -104,7 +125,25 @@ model Workspace {
   optInSubject  String?
   optInMessage  String?
 
+  /// General settings: how dates and times are shown, and the day boundaries
+  /// used by statistics. IANA time zone name, e.g. "Asia/Kolkata".
+  timezone   String @default("UTC")
+  /// "DMY" (13-11-2026), "MDY" (11-13-2026) or "YMD" (2026-11-13).
+  dateFormat String @default("DMY")
+  /// "24h" or "12h".
+  timeFormat String @default("24h")
+
+  /// UTM tags added to links in campaign and automation emails (at launch),
+  /// so the customer's own analytics can see which email sent a visitor.
+  /// utm_campaign is the campaign's name (slugified).
+  utmEnabled Boolean @default(false)
+  utmSource  String  @default("klyve")
+  utmMedium  String  @default("email")
+
   members WorkspaceMember[]
+  invites WorkspaceInvite[]
+  campaignFolders CampaignFolder[]
+  aiUsage AiUsage[]
 
   contacts      Contact[]
   suppressions  Suppression[]
@@ -144,6 +183,51 @@ model WorkspaceMember {
   @@unique([workspaceId, userId])
   @@index([userId])
   @@map("workspace_member")
+}
+
+/// An emailed invitation to join a workspace. The link holds a random token;
+/// only its sha256 hash is stored. Accepting needs a logged-in user whose
+/// email matches `email`.
+model WorkspaceInvite {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// Lower-cased.
+  email       String
+  /// Never OWNER: ownership is not handed out by invite.
+  role        WorkspaceRole @default(MEMBER)
+  tokenHash   String        @unique
+  invitedById String?
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([email])
+  @@map("workspace_invite")
+}
+
+/// One AI request (Groq), counted against the workspace's monthly AI limit
+/// and the user's daily limit. Rows are written only for requests that were
+/// actually sent to the AI provider.
+model AiUsage {
+  id               String    @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId           String?
+  /// e.g. "generate_campaign", "subject_ideas", "improve_text", "segment", "automation", "explain_report".
+  feature          String
+  model            String
+  promptTokens     Int       @default(0)
+  completionTokens Int       @default(0)
+  /// false when the provider answered with an error (still counts: it cost a request).
+  ok               Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([userId, createdAt])
+  @@map("ai_usage")
 }
 
 // ─────────────────────────────────────────────
@@ -519,6 +603,10 @@ model Campaign {
   /// The step's id inside Automation.steps.
   automationStepId String?
 
+  /// Optional folder on the Campaigns page (regular campaigns only).
+  folderId String?
+  folder   CampaignFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
   subject   String @default("")
   preheader String @default("")
 
@@ -574,7 +662,22 @@ model Campaign {
   @@unique([automationId, automationStepId])
   @@index([workspaceId, createdAt])
   @@index([status, scheduledAt])
+  @@index([folderId])
   @@map("campaign")
+}
+
+/// A folder to organise campaigns on the Campaigns page. Deleting a folder
+/// keeps its campaigns (they move back to "No folder").
+model CampaignFolder {
+  id          String     @id @default(cuid())
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  createdAt   DateTime   @default(now())
+  campaigns   Campaign[]
+
+  @@unique([workspaceId, name])
+  @@map("campaign_folder")
 }
 
 enum RecipientStatus {
