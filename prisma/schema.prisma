@@ -125,6 +125,7 @@ model Workspace {
   campaigns Campaign[]
 
   signupForms SignupForm[]
+  automations Automation[]
 
   @@map("workspace")
 }
@@ -181,6 +182,7 @@ model Contact {
   lists              ListMembership[]
   campaignRecipients CampaignRecipient[]
   consentEvents      ConsentEvent[]
+  automationRuns     AutomationRun[]
 
   @@unique([workspaceId, email])
   @@index([workspaceId, createdAt])
@@ -488,12 +490,26 @@ enum CampaignStatus {
   FAILED // could not start or run (see lastError)
 }
 
+enum CampaignKind {
+  REGULAR // a normal one-off campaign (Campaigns page)
+  AUTOMATION // the email of one "send email" step in an automation (hidden from the Campaigns page)
+}
+
 model Campaign {
-  id          String         @id @default(cuid())
-  workspaceId String
-  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  name        String
-  status      CampaignStatus @default(DRAFT)
+  id               String         @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name             String
+  status           CampaignStatus @default(DRAFT)
+  /// Phase 8: automation emails reuse the whole campaign sending engine
+  /// (tracking, unsubscribe, suppression, rate limits). Such a campaign stays
+  /// SENDING while its automation is active; recipients are added one by one
+  /// as people reach the step, and it never "finishes".
+  kind             CampaignKind   @default(REGULAR)
+  automationId     String?
+  automation       Automation?    @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  /// The step's id inside Automation.steps.
+  automationStepId String?
 
   subject   String @default("")
   preheader String @default("")
@@ -547,6 +563,7 @@ model Campaign {
   links      CampaignLink[]
   events     EmailEvent[]
 
+  @@unique([automationId, automationStepId])
   @@index([workspaceId, createdAt])
   @@index([status, scheduledAt])
   @@map("campaign")
@@ -815,4 +832,101 @@ model FormSubmission {
 
   @@index([formId, createdAt])
   @@map("form_submission")
+}
+
+// ─────────────────────────────────────────────
+// Phase 8: Automation
+// ─────────────────────────────────────────────
+
+enum AutomationStatus {
+  DRAFT // being built; nobody enters
+  ACTIVE // new people enter when the trigger happens; runs advance
+  PAUSED // nobody new enters; people already inside wait where they are
+}
+
+/// A workflow: one trigger, then steps (send email / wait / if-else / …).
+/// Shape of `trigger` and `steps`: src/lib/automations/schema.ts.
+model Automation {
+  id             String           @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  status         AutomationStatus @default(DRAFT)
+  trigger        Json
+  steps          Json
+  /// Can the same person go through it again (e.g. yearly birthday)? The
+  /// birthday trigger always allows one run per year.
+  allowReentry   Boolean          @default(false)
+  /// Trigger scanning progress: events after this time haven't been looked at yet.
+  /// Set to the activation time, so turning an automation on never enrols
+  /// everyone who joined a list in the past.
+  triggerCursor  DateTime?
+  activatedAt    DateTime?
+  /// Which ready-made recipe it was created from (e.g. "welcome-series"), if any.
+  recipeId       String?
+  /// Counters for the list page.
+  enrolledCount  Int              @default(0)
+  completedCount Int              @default(0)
+  createdById    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  runs      AutomationRun[]
+  campaigns Campaign[]
+
+  @@index([workspaceId, createdAt])
+  @@index([status])
+  @@map("automation")
+}
+
+enum AutomationRunStatus {
+  ACTIVE // ready to run its next step now
+  WAITING // in a "wait" step until nextRunAt
+  COMPLETED // reached the end
+  EXITED // left early (exit step, unsubscribed, contact deleted, automation edited away)
+  FAILED // a step couldn't run (see lastError)
+}
+
+/// One person going through one automation.
+model AutomationRun {
+  id            String              @id @default(cuid())
+  automationId  String
+  automation    Automation          @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  contactId     String?
+  contact       Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  status        AutomationRunStatus @default(ACTIVE)
+  /// The step to run next (an id inside Automation.steps). null = finished.
+  currentStepId String?
+  /// When this run should be looked at again (now for ACTIVE, the end of the wait for WAITING).
+  nextRunAt     DateTime            @default(now())
+  /// When the worker claimed it (crash detection, like campaign recipients).
+  lockedAt      DateTime?
+  /// For yearly triggers: which occurrence this run is for (e.g. "2026").
+  occurrence    String?
+  lastError     String?
+  startedAt     DateTime            @default(now())
+  finishedAt    DateTime?
+
+  logs AutomationLog[]
+
+  @@unique([automationId, contactId, occurrence])
+  @@index([status, nextRunAt])
+  @@index([automationId, status])
+  @@index([contactId])
+  @@map("automation_run")
+}
+
+/// What happened at each step of a run (the run's history).
+model AutomationLog {
+  id        String        @id @default(cuid())
+  runId     String
+  run       AutomationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepId    String
+  /// "entered", "email_queued", "waited", "branch_yes", "branch_no", "list_added", "exited", "error"…
+  action    String
+  detail    Json?
+  createdAt DateTime      @default(now())
+
+  @@index([runId, createdAt])
+  @@map("automation_log")
 }

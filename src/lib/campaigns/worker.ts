@@ -292,6 +292,7 @@ async function rematerializeEmptyCampaigns(now: Date): Promise<void> {
   const rows = await db.$queryRaw<{ id: string }[]>(Prisma.sql`
     SELECT id FROM campaign
     WHERE status = 'SENDING' AND "recipientCount" = 0
+      AND kind = 'REGULAR' -- automation emails get recipients one by one, never "materialized"
       AND ("startedAt" IS NULL OR "startedAt" < ${ts(cutoff)})
     LIMIT 10`);
   for (const { id } of rows) {
@@ -308,6 +309,7 @@ async function completeFinishedCampaigns(now: Date): Promise<number> {
   const candidates = await db.$queryRaw<{ id: string }[]>(Prisma.sql`
     SELECT c.id FROM campaign c
     WHERE c.status = 'SENDING'
+      AND c.kind = 'REGULAR' -- an automation's email never "finishes": new people keep arriving
       AND c."recipientCount" > 0 -- 0 = recipients still being created (see step 4)
       AND NOT EXISTS (
         SELECT 1 FROM campaign_recipient r
