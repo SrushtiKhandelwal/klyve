@@ -124,6 +124,8 @@ model Workspace {
 
   campaigns Campaign[]
 
+  signupForms SignupForm[]
+
   @@map("workspace")
 }
 
@@ -748,4 +750,69 @@ model ConsentEvent {
   @@index([workspaceId, createdAt])
   @@index([contactId, createdAt])
   @@map("consent_event")
+}
+
+// ─────────────────────────────────────────────
+// Phase 7: Sign-up forms
+// ─────────────────────────────────────────────
+
+enum FormStatus {
+  ACTIVE // accepting sign-ups
+  PAUSED // the public page says "not accepting sign-ups right now"
+}
+
+/// A sign-up form people fill in on a hosted page (/f/<publicId>) or on the
+/// user's own website (embedded). Submissions create/update contacts through
+/// the double opt-in logic (src/lib/optin addPendingContact).
+model SignupForm {
+  id              String     @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// Internal name, e.g. "Website footer".
+  name            String
+  /// Random public id used in URLs, so form URLs don't reveal the internal id.
+  publicId        String     @unique
+  status          FormStatus @default(ACTIVE)
+  /// Fields, texts and look. Shape: src/lib/forms/schema.ts (formConfigSchema).
+  config          Json
+  /// Lists every new subscriber is added to.
+  listIds         String[]   @default([])
+  /// Counters for the forms list (also derivable from FormSubmission).
+  submissionCount Int        @default(0)
+  createdById     String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  submissions FormSubmission[]
+
+  @@index([workspaceId, createdAt])
+  @@map("signup_form")
+}
+
+enum FormSubmissionResult {
+  SUBSCRIBED // new or existing contact, now subscribed
+  PENDING // double opt-in email sent, waiting for the click
+  ALREADY_SUBSCRIBED // was already on the list; nothing to do
+  NOT_RESUBSCRIBED // had unsubscribed/bounced/complained: we respect that
+  SUPPRESSED // on the suppression list
+  SPAM // caught by the honeypot / timing / rate limit checks
+}
+
+/// One submission of a form (for the form's stats and as consent evidence).
+model FormSubmission {
+  id        String               @id @default(cuid())
+  formId    String
+  form      SignupForm           @relation(fields: [formId], references: [id], onDelete: Cascade)
+  contactId String?
+  /// Lower-cased address as submitted (null for spam that had no valid email).
+  email     String?
+  result    FormSubmissionResult
+  ipHash    String?
+  userAgent String?
+  /// The page the form was on (embed Referer/Origin), for "where do sign-ups come from".
+  sourceUrl String?
+  createdAt DateTime             @default(now())
+
+  @@index([formId, createdAt])
+  @@map("form_submission")
 }

@@ -1,4 +1,5 @@
 import {
+  ClipboardList,
   FileText,
   House,
   Megaphone,
@@ -17,6 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/contacts", label: "Contacts", icon: Users },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/templates", label: "Templates", icon: FileText },
+  { href: "/forms", label: "Forms", icon: ClipboardList },
   { href: "/automations", label: "Automations", icon: Workflow },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
