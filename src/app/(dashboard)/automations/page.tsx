@@ -4,7 +4,7 @@ import { Cake, HeartHandshake, PartyPopper, Workflow } from "lucide-react";
 import { AutomationRow, type AutomationRowData } from "@/components/automations/automation-row";
 import { CreateAutomationButton } from "@/components/automations/create-automation-button";
 import { triggerParts } from "@/components/automations/describe";
-import { PageContainer } from "@/components/dashboard/page-header";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AUTOMATION_LIMITS, getAutomationLookups, listAutomations } from "@/lib/automations/queries";
 import { requireActiveWorkspace } from "@/lib/workspace";
@@ -78,13 +78,11 @@ async function AutomationsContent() {
 
 function Header({ showButton }: { showButton: boolean }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Automations</h1>
-        <p className="text-sm text-zinc-500 sm:text-base">Emails that send themselves when something happens.</p>
-      </div>
-      {showButton && <CreateAutomationButton />}
-    </div>
+    <PageHeader
+      title="Automations"
+      description="Emails that send themselves when something happens."
+      actions={showButton && <CreateAutomationButton />}
+    />
   );
 }
 
@@ -127,10 +125,7 @@ function AutomationsEmpty() {
 function AutomationsSkeleton() {
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Automations</h1>
-        <p className="text-sm text-zinc-500 sm:text-base">Emails that send themselves when something happens.</p>
-      </div>
+      <PageHeader title="Automations" description="Emails that send themselves when something happens." />
       <div className="flex flex-col gap-3">
         {Array.from({ length: 3 }, (_, i) => (
           <div key={i} className="flex items-center gap-3 rounded-xl border bg-white p-4">

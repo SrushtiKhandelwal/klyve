@@ -74,7 +74,9 @@ export function CreateKeyDialog({
         Create API key
       </DialogTrigger>
 
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
+      {/* grid-cols-1 (= minmax(0, 1fr)) stops wide content, like the long curl
+          line below, from stretching the dialog: it scrolls inside its own box. */}
+      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-cols-1 overflow-y-auto sm:max-w-xl">
         {!created ? (
           <>
             <DialogHeader>
@@ -125,7 +127,7 @@ export function CreateKeyDialog({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex min-w-0 flex-col gap-3">
               <div className="flex items-center gap-2 rounded-xl bg-zinc-950 py-2 pr-2 pl-4">
                 <code className="min-w-0 flex-1 font-mono text-sm break-all text-emerald-300" aria-label="Your API key">
                   {created.key}
@@ -141,7 +143,7 @@ export function CreateKeyDialog({
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
               <p className="text-sm font-medium text-zinc-900">Try it: send yourself an email</p>
               <CodeBlock
                 title="Terminal"

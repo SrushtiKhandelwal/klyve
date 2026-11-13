@@ -10,14 +10,14 @@ export const metadata: Metadata = {
 // This page is a static shell; the interactive form is a Client Component.
 export default function LoginPage() {
   return (
-    <Card className="gap-6 py-8 shadow-sm">
-      <CardHeader className="px-8 text-center">
+    <Card className="gap-6 py-8 shadow-lg shadow-zinc-900/5">
+      <CardHeader className="px-6 text-center sm:px-8">
         <CardTitle>
-          <h1 className="text-2xl font-semibold">Welcome back</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
         </CardTitle>
         <CardDescription>Log in to your {BRAND.name} account.</CardDescription>
       </CardHeader>
-      <CardContent className="px-8">
+      <CardContent className="px-6 sm:px-8">
         <LoginForm />
       </CardContent>
     </Card>

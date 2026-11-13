@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpenIcon, CodeIcon, InboxIcon, KeyRoundIcon, SearchX, SendIcon, TagIcon } from "lucide-react";
-import { PageContainer } from "@/components/dashboard/page-header";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { DailyChart } from "@/components/transactional/daily-chart";
 import { EmailLogList } from "@/components/transactional/email-log-list";
 import { filtersToSearch, hasFilters, parseLogFilters } from "@/components/transactional/filters";
@@ -92,21 +92,19 @@ async function TransactionalContent({ searchParams }: { searchParams: SearchPara
 
 function Header({ testOptions, showTest }: { testOptions: TestSendOptions; showTest: boolean }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Transactional</h1>
-        <p className="text-sm text-zinc-500 sm:text-base">
-          One-to-one emails your app sends through the API, like receipts and password resets.
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Link href="/docs/api" className={buttonVariants({ variant: "outline" })}>
-          <BookOpenIcon aria-hidden />
-          API docs
-        </Link>
-        {showTest && <SendTestDialog options={testOptions} />}
-      </div>
-    </div>
+    <PageHeader
+      title="Transactional"
+      description="One-to-one emails your app sends through the API, like receipts and password resets."
+      actions={
+        <>
+          <Link href="/docs/api" className={buttonVariants({ variant: "outline" })}>
+            <BookOpenIcon aria-hidden />
+            API docs
+          </Link>
+          {showTest && <SendTestDialog options={testOptions} />}
+        </>
+      }
+    />
   );
 }
 
@@ -218,12 +216,10 @@ function TransactionalEmpty({ testOptions }: { testOptions: TestSendOptions }) {
 function LogsSkeleton() {
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Transactional</h1>
-        <p className="text-sm text-zinc-500 sm:text-base">
-          One-to-one emails your app sends through the API, like receipts and password resets.
-        </p>
-      </div>
+      <PageHeader
+        title="Transactional"
+        description="One-to-one emails your app sends through the API, like receipts and password resets."
+      />
       <div className="rounded-xl border bg-white p-5">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (

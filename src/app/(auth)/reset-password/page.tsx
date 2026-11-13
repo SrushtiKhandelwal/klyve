@@ -19,10 +19,10 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 // expired or used).
 export default function ResetPasswordPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Card className="gap-6 py-8 shadow-sm">
+    <Card className="gap-6 py-8 shadow-lg shadow-zinc-900/5">
       <CardHeader className="px-6 text-center sm:px-8">
         <CardTitle>
-          <h1 className="text-2xl font-semibold">Choose a new password</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Choose a new password</h1>
         </CardTitle>
         <CardDescription>You&apos;ll be logged out on all your other devices.</CardDescription>
       </CardHeader>

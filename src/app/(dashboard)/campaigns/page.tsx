@@ -5,7 +5,7 @@ import { Megaphone, Palette, Plus, SearchX, Send, Users } from "lucide-react";
 import { CampaignsFilters } from "@/components/campaigns/campaigns-filters";
 import { CampaignsList } from "@/components/campaigns/campaigns-list";
 import type { CampaignRowView } from "@/components/campaigns/types";
-import { PageContainer } from "@/components/dashboard/page-header";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listCampaigns } from "@/lib/campaigns/queries";
@@ -100,18 +100,18 @@ async function CampaignsContent({ searchParams }: { searchParams: SearchParams }
 
 function Header({ showButton }: { showButton: boolean }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Campaigns</h1>
-        <p className="text-sm text-zinc-500 sm:text-base">One-off emails sent to your lists and segments.</p>
-      </div>
-      {showButton && (
-        <Link href="/campaigns/new" className={buttonVariants()}>
-          <Plus aria-hidden />
-          Create campaign
-        </Link>
-      )}
-    </div>
+    <PageHeader
+      title="Campaigns"
+      description="One-off emails sent to your lists and segments."
+      actions={
+        showButton && (
+          <Link href="/campaigns/new" className={buttonVariants()}>
+            <Plus aria-hidden />
+            Create campaign
+          </Link>
+        )
+      }
+    />
   );
 }
 
@@ -159,10 +159,7 @@ function CampaignsEmpty() {
 function CampaignsSkeleton() {
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Campaigns</h1>
-        <p className="text-sm text-zinc-500 sm:text-base">One-off emails sent to your lists and segments.</p>
-      </div>
+      <PageHeader title="Campaigns" description="One-off emails sent to your lists and segments." />
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2 sm:flex-row">
           <Skeleton className="h-8 w-full sm:w-72" />

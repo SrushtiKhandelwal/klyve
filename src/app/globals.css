@@ -69,7 +69,9 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Focus rings use our emerald accent (Tailwind's emerald-500), so keyboard
+     focus on inputs and buttons matches the rest of the app. */
+  --ring: oklch(0.696 0.17 162.48);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

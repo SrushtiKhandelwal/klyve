@@ -96,7 +96,9 @@ export function CopyIconButton({ text, what = "Code", className }: { text: strin
 
 function CodeFrame({ header, code, what }: { header: ReactNode; code: string; what: string }) {
   return (
-    <div className="overflow-hidden rounded-xl bg-zinc-950 ring-1 ring-zinc-900/10">
+    // min-w-0 + max-w-full: the box never grows wider than its parent; long
+    // lines scroll sideways inside the <pre> instead of widening the page.
+    <div className="min-w-0 max-w-full overflow-hidden rounded-xl bg-zinc-950 ring-1 ring-zinc-900/10">
       <div className="flex min-h-10 items-center justify-between gap-2 border-b border-white/10 px-3">
         <div className="min-w-0">{header}</div>
         <CopyIconButton text={code} what={what} />

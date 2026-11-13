@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ClipboardList, Globe, LayoutTemplate, Smartphone } from "lucide-react";
-import { PageContainer } from "@/components/dashboard/page-header";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { CreateFormButton } from "@/components/forms/create-form-button";
 import { FormCard, type FormCardData } from "@/components/forms/form-card";
 import { FormThumbnail } from "@/components/forms/form-thumbnail";
@@ -84,13 +84,11 @@ function toCards(forms: FormListItem[], canDelete: boolean): FormCardData[] {
 
 function Header({ showButton }: { showButton: boolean }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Forms</h1>
-        <p className="text-sm text-zinc-500 sm:text-base">Sign-up forms that add new subscribers to your lists.</p>
-      </div>
-      {showButton && <CreateFormButton />}
-    </div>
+    <PageHeader
+      title="Forms"
+      description="Sign-up forms that add new subscribers to your lists."
+      actions={showButton && <CreateFormButton />}
+    />
   );
 }
 
@@ -130,10 +128,7 @@ function FormsEmpty() {
 function FormsSkeleton() {
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">Forms</h1>
-        <p className="text-sm text-zinc-500 sm:text-base">Sign-up forms that add new subscribers to your lists.</p>
-      </div>
+      <PageHeader title="Forms" description="Sign-up forms that add new subscribers to your lists." />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }, (_, i) => (
           <div key={i} className="overflow-hidden rounded-xl border bg-white">

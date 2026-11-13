@@ -63,7 +63,7 @@ export function WorkspaceSwitcherMenu({
         <DropdownMenuTrigger
           disabled={isPending}
           title={active.name}
-          className="flex h-12 w-full items-center gap-2.5 rounded-lg border bg-white px-2 text-left transition-colors outline-none hover:bg-zinc-50 focus-visible:ring-3 focus-visible:ring-emerald-500/40 disabled:opacity-70 data-popup-open:bg-zinc-50 md:max-lg:justify-center md:max-lg:border-transparent md:max-lg:px-0"
+          className="flex h-12 w-full items-center gap-2.5 rounded-lg border bg-white px-2 text-left shadow-xs transition-colors outline-none hover:border-zinc-300 hover:bg-zinc-50 focus-visible:ring-3 focus-visible:ring-emerald-500/40 disabled:opacity-70 data-popup-open:bg-zinc-50 md:max-lg:justify-center md:max-lg:border-transparent md:max-lg:px-0 md:max-lg:shadow-none"
         >
           <WorkspaceInitial name={active.name} />
           <span className="flex min-w-0 flex-1 flex-col md:max-lg:sr-only">

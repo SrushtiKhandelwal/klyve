@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,29 @@ export function SidebarShell({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeMobile = () => setMobileOpen(false);
+
+  // While the phone drawer is open: Escape closes it, the page behind it
+  // doesn't scroll, and it closes itself if the screen becomes wide enough
+  // for the normal sidebar (e.g. a phone turned sideways).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false);
+    }
+    const wide = window.matchMedia("(min-width: 48rem)"); // Tailwind's `md`
+    function onResize() {
+      if (wide.matches) setMobileOpen(false);
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    wide.addEventListener("change", onResize);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+      wide.removeEventListener("change", onResize);
+    };
+  }, [mobileOpen]);
 
   return (
     <SidebarContext value={{ closeMobile }}>

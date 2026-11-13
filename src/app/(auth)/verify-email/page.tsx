@@ -20,7 +20,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 // INVALID_TOKEN / USER_NOT_FOUND).
 export default function VerifyEmailPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Card className="py-8 shadow-sm">
+    <Card className="py-8 shadow-lg shadow-zinc-900/5">
       <CardContent className="px-6 sm:px-8">
         {/* Reads the URL and the session at request time, so (Next.js rule)
             it must sit inside <Suspense>. */}
@@ -128,7 +128,7 @@ function Status({
         <Icon className="size-6" aria-hidden="true" />
       </div>
       <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="text-sm break-words text-muted-foreground">{text}</p>
       </div>
       {children}

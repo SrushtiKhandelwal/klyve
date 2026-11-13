@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SearchX, Upload, Users } from "lucide-react";
-import { PageContainer } from "@/components/dashboard/page-header";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { ContactCreateDialog } from "@/components/contacts/contact-create-dialog";
 import { ContactsTable, type ContactsTableRow } from "@/components/contacts/contacts-table";
 import { ContactsTableFilters } from "@/components/contacts/contacts-table-filters";
@@ -56,18 +56,18 @@ async function ContactsContent({ searchParams }: { searchParams: SearchParams })
   ]);
 
   const header = (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+    <PageHeader
+      title={
+        <>
           Contacts
-          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-sm font-medium text-emerald-700 tabular-nums">
+          <span className="ml-3 inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 align-middle text-sm font-medium tracking-normal text-emerald-700 tabular-nums">
             {workspaceTotal.toLocaleString("en")}
           </span>
-        </h1>
-        <p className="text-sm text-zinc-500 sm:text-base">Everyone you can send email to.</p>
-      </div>
-      {workspaceTotal > 0 && <ContactCreateDialog lists={lists} attributes={attributes} />}
-    </div>
+        </>
+      }
+      description="Everyone you can send email to."
+      actions={workspaceTotal > 0 && <ContactCreateDialog lists={lists} attributes={attributes} />}
+    />
   );
 
   // Brand-new workspace: no table, just a friendly way to get started.
@@ -166,13 +166,15 @@ async function ContactsContent({ searchParams }: { searchParams: SearchParams })
 function ContactsSkeleton() {
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
-          Contacts
-          <Skeleton className="h-6 w-10 rounded-full" />
-        </h1>
-        <p className="text-sm text-zinc-500 sm:text-base">Everyone you can send email to.</p>
-      </div>
+      <PageHeader
+        title={
+          <>
+            Contacts
+            <Skeleton className="ml-3 inline-block h-6 w-10 rounded-full align-middle" />
+          </>
+        }
+        description="Everyone you can send email to."
+      />
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2 sm:flex-row">
           <Skeleton className="h-8 w-full sm:w-72" />
