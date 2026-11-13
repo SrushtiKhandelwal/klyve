@@ -8,6 +8,7 @@ import { signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/auth/form-field";
 import { friendlyAuthError, looksLikeEmail } from "@/components/auth/auth-errors";
+import { safeNextPath, withNext } from "@/components/auth/safe-next";
 
 type FieldErrors = { email?: string; password?: string };
 
@@ -26,6 +27,21 @@ function ResetSuccessNotice() {
       <CircleCheckIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
       <span>Your password was changed. Log in with your new password.</span>
     </div>
+  );
+}
+
+/** The safe "?next=" page from the address bar (read in the browser only, when needed). */
+function currentNext(): string | null {
+  return safeNextPath(new URLSearchParams(window.location.search).get("next"));
+}
+
+/** "Sign up" link that keeps the "?next=" (e.g. a team invite). Reads the URL, so it sits in <Suspense>. */
+function SignupLink() {
+  const next = useSearchParams().get("next");
+  return (
+    <Link href={withNext("/signup", next)} className="font-medium text-emerald-700 hover:underline">
+      Sign up
+    </Link>
   );
 }
 
@@ -53,7 +69,7 @@ export function LoginForm() {
 
     // 2. Ask Better Auth to log in. On success it sets the session cookie.
     setLoading(true);
-    const { error } = await signIn.email({ email, password });
+    const { data: result, error } = await signIn.email({ email, password });
 
     if (error) {
       setFormError(friendlyAuthError(error));
@@ -61,11 +77,16 @@ export function LoginForm() {
       return;
     }
 
-    // 3. Go to the dashboard with a FULL page load, so nothing cached from
-    //    before login (e.g. "/dashboard → go to /login") can be reused.
+    // 2b. Two-step login is on for this account: the password was right, but
+    //     no session exists yet. The auth client is already taking the user
+    //     to /two-factor (see src/lib/auth-client.ts), so just wait.
+    if (result && "twoFactorRedirect" in result && result.twoFactorRedirect) return;
+
+    // 3. Go to the page they came for (e.g. a team invite) or the dashboard,
+    //    with a FULL page load, so nothing cached from before login
+    //    (e.g. "/dashboard → go to /login") can be reused.
     //    We leave `loading` on so the button stays disabled while we navigate.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- intentional: auth change needs a clean page load
-    window.location.assign("/dashboard");
+    window.location.assign(currentNext() ?? "/dashboard");
   }
 
   return (
@@ -122,9 +143,15 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="font-medium text-emerald-700 hover:underline">
-          Sign up
-        </Link>
+        <Suspense
+          fallback={
+            <Link href="/signup" className="font-medium text-emerald-700 hover:underline">
+              Sign up
+            </Link>
+          }
+        >
+          <SignupLink />
+        </Suspense>
       </p>
     </form>
   );

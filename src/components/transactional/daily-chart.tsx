@@ -1,10 +1,14 @@
+import { dayLabel as statsDayLabel, labelStep } from "@/components/statistics/chart-utils";
 import type { TransactionalStatusName } from "@/lib/transactional/schema";
+import { cn } from "@/lib/utils";
 
 // Emails per day as a small stacked bar chart (same no-library approach as
 // the form sign-ups chart): each bar is a <div> whose height is a percentage
 // of the busiest day, so it needs no JavaScript and fits any screen width.
 // Hovering a bar shows its exact numbers; the same numbers are in a real
 // <table> under "View as table" for screen readers.
+// Works for 7 days (the logs page) up to a year (Transactional → Statistics):
+// with many days the bars get thinner and only some days are labelled.
 
 type Day = { day: string; total: number; byStatus: Record<TransactionalStatusName, number> };
 
@@ -28,24 +32,19 @@ function niceTop(max: number): number {
   return 10 * magnitude;
 }
 
-/** "2026-11-13" → "Fri 13 Nov" (a UTC day, so format it in UTC). */
-function dayLabel(date: string, weekday = true): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", {
-    ...(weekday ? { weekday: "short" } : {}),
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
-}
+/** "2026-11-13" → "Fri 13 Nov" (the key is already a calendar day, so format it in UTC). */
+const dayLabel = (date: string, weekday = true) => statsDayLabel(date, { weekday });
 
 const fmt = (n: number) => n.toLocaleString("en");
 
-export function DailyChart({ daily }: { daily: Day[] }) {
+export function DailyChart({ daily, zoneLabel = "UTC" }: { daily: Day[]; /** The time zone the days are in. */ zoneLabel?: string }) {
+  const step = labelStep(daily.length);
+  const dense = daily.length > 31;
   const max = Math.max(0, ...daily.map((d) => d.total));
   const top = niceTop(max);
   const total = daily.reduce((n, d) => n + d.total, 0);
   const summary =
-    `Stacked bar chart of transactional emails per day for the last ${daily.length} days: ${fmt(total)} in total. ` +
+    `Stacked bar chart of transactional emails per day for ${daily.length} days: ${fmt(total)} in total. ` +
     "Exact numbers are in the table below.";
 
   return (
@@ -67,7 +66,7 @@ export function DailyChart({ daily }: { daily: Day[] }) {
               style={{ top: `${100 - (t / top) * 100}%` }}
             />
           ))}
-          <div className="absolute inset-0 flex items-end gap-1.5 sm:gap-3" aria-hidden>
+          <div className={cn("absolute inset-0 flex items-end", dense ? "gap-px" : daily.length > 10 ? "gap-0.5 sm:gap-1" : "gap-1.5 sm:gap-3")} aria-hidden>
             {daily.map((d) => (
               <div
                 key={d.day}
@@ -75,10 +74,10 @@ export function DailyChart({ daily }: { daily: Day[] }) {
                   const n = sum(d, p.statuses);
                   return n ? `\n${p.label}: ${fmt(n)}` : "";
                 }).join("")}`}
-                className="group flex h-full min-w-0 flex-1 flex-col justify-end"
+                className="group flex h-full min-w-0 flex-1 flex-col justify-end hover:bg-zinc-50"
               >
                 {/* Each part's height is its share of the y axis; column-reverse puts "Sent" at the bottom. */}
-                <div className="flex w-full flex-col-reverse overflow-hidden rounded-t-[3px] group-hover:opacity-85" style={{ height: d.total ? `max(2px, ${(d.total / top) * 100}%)` : 0 }}>
+                <div className={cn("flex w-full flex-col-reverse overflow-hidden group-hover:opacity-85", dense ? "rounded-t-[1px]" : "rounded-t-[3px]")} style={{ height: d.total ? `max(2px, ${(d.total / top) * 100}%)` : 0 }}>
                   {PARTS.map((p) => {
                     const n = sum(d, p.statuses);
                     return n ? <div key={p.key} className={p.color} style={{ height: `${(n / d.total) * 100}%` }} /> : null;
@@ -91,12 +90,22 @@ export function DailyChart({ daily }: { daily: Day[] }) {
         </div>
       </div>
 
-      <div className="ml-9 flex gap-1.5 text-[11px] text-zinc-500 sm:gap-3" aria-hidden>
-        {daily.map((d) => (
-          <span key={d.day} className="min-w-0 flex-1 truncate text-center">
-            {dayLabel(d.day, false)}
-          </span>
-        ))}
+      <div
+        className={cn("ml-9 flex h-4 text-[11px] text-zinc-500", dense ? "gap-px" : daily.length > 10 ? "gap-0.5 sm:gap-1" : "gap-1.5 sm:gap-3")}
+        aria-hidden
+      >
+        {daily.map((d, i) =>
+          step === 1 ? (
+            <span key={d.day} className="min-w-0 flex-1 truncate text-center">
+              {dayLabel(d.day, false)}
+            </span>
+          ) : (
+            // Only every few days: centred under its bar, allowed to be wider than it.
+            <span key={d.day} className="relative min-w-0 flex-1">
+              {i % step === 0 && <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap">{dayLabel(d.day, false)}</span>}
+            </span>
+          ),
+        )}
       </div>
 
       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600" aria-hidden>
@@ -110,13 +119,13 @@ export function DailyChart({ daily }: { daily: Day[] }) {
 
       <details className="mt-2 text-sm">
         <summary className="w-fit cursor-pointer text-xs font-medium text-zinc-500 hover:text-zinc-800">View as table</summary>
-        <div className="mt-2 overflow-x-auto rounded-lg border">
+        <div className="mt-2 max-h-72 overflow-auto rounded-lg border">
           <table className="w-full text-left text-xs">
-            <caption className="sr-only">Transactional emails per day (UTC)</caption>
-            <thead className="bg-zinc-50 text-zinc-500">
+            <caption className="sr-only">Transactional emails per day ({zoneLabel})</caption>
+            <thead className="sticky top-0 bg-zinc-50 text-zinc-500">
               <tr>
                 <th scope="col" className="px-3 py-2 font-medium">
-                  Day (UTC)
+                  Day ({zoneLabel})
                 </th>
                 <th scope="col" className="px-3 py-2 text-right font-medium">
                   Total

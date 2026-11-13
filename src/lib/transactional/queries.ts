@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma, type TransactionalStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { dayAfter, startOfDay } from "@/lib/format-date";
 import { TRANSACTIONAL_STATUSES, type PublicEmail, type TransactionalStatusName } from "./schema";
 import { userIdempotencyKey } from "./idempotency";
 
@@ -151,7 +152,7 @@ export type TransactionalStats = {
   total: number;
   /** Every status, 0 when none. */
   byStatus: Record<TransactionalStatusName, number>;
-  /** One entry per UTC day, oldest first, zero-filled. */
+  /** One entry per day (UTC here; the workspace time zone in the range version), oldest first, zero-filled. */
   daily: { day: string; total: number; byStatus: Record<TransactionalStatusName, number> }[];
   /** The most used tags in the period (up to 10). */
   topTags: { tag: string; count: number }[];
@@ -203,6 +204,58 @@ export async function getTransactionalStats(workspaceId: string, opts: { days?: 
     total += r.n;
   }
   return { days, total, byStatus, daily, topTags: tags };
+}
+
+/**
+ * Counts for a date range (Transactional → Statistics), by calendar day in
+ * the WORKSPACE time zone. `from` / `to` are "YYYY-MM-DD", both included,
+ * already checked and limited to 366 days (see src/lib/statistics/range.ts).
+ * An email counts on the day it was accepted (createdAt), with its status now.
+ */
+export async function getTransactionalStatsForRange(
+  workspaceId: string,
+  range: { from: string; to: string },
+  timezone: string,
+): Promise<TransactionalStats & { from: string; to: string }> {
+  const fromAt = startOfDay(range.from, timezone);
+  const toAt = startOfDay(dayAfter(range.to), timezone);
+  const from = Prisma.sql`${fromAt}::timestamp`;
+  const to = Prisma.sql`${toAt}::timestamp`;
+
+  const [perDay, tags] = await Promise.all([
+    db.$queryRaw<{ day: string; status: TransactionalStatusName; n: number }[]>(Prisma.sql`
+      SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone}::text, 'YYYY-MM-DD') AS day,
+             status::text AS status, count(*)::int AS n
+      FROM transactional_email
+      WHERE "workspaceId" = ${workspaceId} AND "createdAt" >= ${from} AND "createdAt" < ${to}
+      GROUP BY 1, 2`),
+    db.$queryRaw<{ tag: string; count: number }[]>(Prisma.sql`
+      SELECT t.tag, count(*)::int AS count
+      FROM transactional_email e, unnest(e.tags) AS t(tag)
+      WHERE e."workspaceId" = ${workspaceId} AND e."createdAt" >= ${from} AND e."createdAt" < ${to}
+      GROUP BY t.tag
+      ORDER BY count DESC, t.tag ASC
+      LIMIT 10`),
+  ]);
+
+  const daily: TransactionalStats["daily"] = [];
+  const index = new Map<string, TransactionalStats["daily"][number]>();
+  for (let day = range.from; day <= range.to && daily.length <= 366; day = dayAfter(day)) {
+    const entry = { day, total: 0, byStatus: emptyCounts() };
+    daily.push(entry);
+    index.set(day, entry);
+  }
+  const byStatus = emptyCounts();
+  let total = 0;
+  for (const r of perDay) {
+    const entry = index.get(r.day);
+    if (!entry || !(r.status in byStatus)) continue;
+    entry.total += r.n;
+    entry.byStatus[r.status] += r.n;
+    byStatus[r.status] += r.n;
+    total += r.n;
+  }
+  return { days: daily.length, from: range.from, to: range.to, total, byStatus, daily, topTags: tags };
 }
 
 // ── Dashboard: one email in full ─────────────────────────────────────────────

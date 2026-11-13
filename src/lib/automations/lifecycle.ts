@@ -86,7 +86,7 @@ export async function activateAutomation(ws: WorkspaceArg, automationId: string,
   const emails: { step: SendEmailStep; content: StepEmailContent }[] = [];
   for (const step of flattenSteps(steps.data)) {
     if (step.type !== "send_email") continue;
-    const rendered = await renderStepEmail(workspaceId, step);
+    const rendered = await renderStepEmail(workspaceId, step, { automationName: automation.name });
     if (rendered.ok) emails.push({ step, content: rendered.content });
     else problems.push(...rendered.problems);
   }

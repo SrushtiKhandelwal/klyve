@@ -20,6 +20,7 @@ import {
   UserMinus,
   type LucideIcon,
 } from "lucide-react";
+import { ExplainResultsButton, ExplainResultsPanel, useExplainResults } from "@/components/ai/explain-results";
 import { RelativeTime } from "@/components/campaigns/local-time";
 import { formatCount } from "@/components/campaigns/types";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,9 @@ export function CampaignReportSection({
   const { stats, rates, trackOpens, trackClicks } = report;
   const complaintHigh = stats.sentCount > 0 && report.complaintRatio >= COMPLAINT_RATE_LIMIT;
   const bounceHigh = stats.sentCount > 0 && report.bounceRatio >= BOUNCE_RATE_WARNING;
+  // "Explain my results" (AI) once something has been sent.
+  const explain = useExplainResults(report.campaignId);
+  const canExplain = stats.sentCount > 0;
 
   return (
     <section aria-labelledby="report-title" className="flex flex-col gap-6 rounded-xl border bg-white p-4 sm:p-5">
@@ -64,11 +68,16 @@ export function CampaignReportSection({
             {report.status === "SENDING" && " · updates by itself while sending"}
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
-          {loading ? <Loader2 className="animate-spin" aria-hidden /> : <RefreshCw aria-hidden />}
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {canExplain && <ExplainResultsButton state={explain} />}
+          <Button type="button" variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
+            {loading ? <Loader2 className="animate-spin" aria-hidden /> : <RefreshCw aria-hidden />}
+            Refresh
+          </Button>
+        </div>
       </div>
+
+      {canExplain && <ExplainResultsPanel state={explain} />}
 
       {error && (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

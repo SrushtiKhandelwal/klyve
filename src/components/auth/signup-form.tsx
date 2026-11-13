@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Loader2Icon } from "lucide-react";
 import { signUp } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import {
   friendlyAuthError,
   looksLikeEmail,
 } from "@/components/auth/auth-errors";
+import { safeNextPath, withNext } from "@/components/auth/safe-next";
 
 type FieldErrors = {
   name?: string;
@@ -18,6 +20,30 @@ type FieldErrors = {
   password?: string;
   confirmPassword?: string;
 };
+
+/** "Log in" link that keeps the "?next=" (e.g. a team invite). Reads the URL, so it sits in <Suspense>. */
+function LoginLink({ className, children }: { className: string; children: string }) {
+  const next = useSearchParams().get("next");
+  return (
+    <Link href={withNext("/login", next)} className={className}>
+      {children}
+    </Link>
+  );
+}
+
+function LoginLinkWithFallback({ className, children }: { className: string; children: string }) {
+  return (
+    <Suspense
+      fallback={
+        <Link href="/login" className={className}>
+          {children}
+        </Link>
+      }
+    >
+      <LoginLink className={className}>{children}</LoginLink>
+    </Suspense>
+  );
+}
 
 export function SignupForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -63,10 +89,12 @@ export function SignupForm() {
       return;
     }
 
-    // 3. Go to the dashboard (it sends new users on to /onboarding) with a
-    //    FULL page load, so no page cached from before sign-up is reused.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- intentional: auth change needs a clean page load
-    window.location.assign("/dashboard");
+    // 3. Go back to the page that sent them here (e.g. a team invite, which
+    //    they can join without creating a workspace first), otherwise to the
+    //    dashboard (it sends new users on to /onboarding). FULL page load, so
+    //    no page cached from before sign-up is reused.
+    const next = safeNextPath(new URLSearchParams(window.location.search).get("next"));
+    window.location.assign(next ?? "/dashboard");
   }
 
   return (
@@ -78,11 +106,7 @@ export function SignupForm() {
         >
           {formError}{" "}
           {/* Small shortcut when the email is already registered. */}
-          {emailTaken && (
-            <Link href="/login" className="font-medium underline">
-              Log in
-            </Link>
-          )}
+          {emailTaken && <LoginLinkWithFallback className="font-medium underline">Log in</LoginLinkWithFallback>}
         </div>
       )}
 
@@ -134,9 +158,7 @@ export function SignupForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-emerald-700 hover:underline">
-          Log in
-        </Link>
+        <LoginLinkWithFallback className="font-medium text-emerald-700 hover:underline">Log in</LoginLinkWithFallback>
       </p>
     </form>
   );

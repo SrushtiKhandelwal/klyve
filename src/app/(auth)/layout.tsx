@@ -22,8 +22,8 @@ const POINTS = [
   },
 ];
 
-// Shared frame for /login, /signup, /forgot-password, /reset-password and
-// /verify-email: the page's card centred, with a slim product panel on the
+// Shared frame for /login, /signup, /two-factor, /forgot-password,
+// /reset-password and /verify-email: the page's card centred, with a slim product panel on the
 // left on wide screens. The "(auth)" folder name is a route group: it groups
 // these pages under one layout without adding "/auth" to the URL.
 export default function AuthLayout({ children }: { children: ReactNode }) {

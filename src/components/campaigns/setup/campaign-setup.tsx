@@ -217,6 +217,7 @@ export function CampaignSetup({
               save({ preheader: v });
             }}
             mergeTags={mergeTags}
+            campaignId={campaign.id}
             senderName={sender?.name || sender?.email || ""}
             limits={limits}
           />

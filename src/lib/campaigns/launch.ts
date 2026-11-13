@@ -16,6 +16,7 @@ import { suppressedMessage } from "@/lib/suppression/meta";
 import { InvalidDocumentError, renderDocument } from "@/lib/templates/render";
 import { SAMPLE_CONTACT } from "@/lib/templates/sample-data";
 import { prepareTrackedHtml, untrackHtml } from "@/lib/tracking/links";
+import { applyUtmTags, getCampaignUtmTags } from "@/lib/tracking/utm-settings";
 
 // Launching campaigns and moving them between states.
 //
@@ -66,12 +67,15 @@ export async function launchCampaign(
   // to the very version that was checked.
   const switches = await db.campaign.findFirst({
     where: { id: campaignId, workspaceId },
-    select: { trackOpens: true, trackClicks: true, updatedAt: true },
+    select: { name: true, trackOpens: true, trackClicks: true, updatedAt: true },
   });
   if (!switches || switches.updatedAt.getTime() !== ready.updatedAt.getTime()) {
     return { ok: false, problems: [{ code: "changed", message: "The campaign was changed while it was being checked. Please try again." }] };
   }
-  const tracked = prepareTrackedHtml(ready.html, switches);
+  // UTM tags (Settings → Link tracking) go in FIRST, so the links stored for
+  // click tracking already carry them and the click redirect passes them on.
+  const utmTags = await getCampaignUtmTags(workspaceId, switches.name);
+  const tracked = prepareTrackedHtml(applyUtmTags(ready.html, utmTags), switches);
 
   const now = new Date();
   // ONE conditional write claims the launch. `updatedAt` must still be what
@@ -399,6 +403,8 @@ export async function sendCampaignTest(
     if (!doc?.success) return { ok: false, message: "Design the email first, then send a test." };
     try {
       parts = await renderDocument(doc.data, { subject: campaign.subject, preheader: campaign.preheader });
+      // Same UTM tags as the real send, so the test shows the links people will get.
+      parts = { ...parts, html: applyUtmTags(parts.html, await getCampaignUtmTags(workspaceId, campaign.name)) };
     } catch (error) {
       if (error instanceof InvalidDocumentError) return { ok: false, message: error.message };
       throw error;

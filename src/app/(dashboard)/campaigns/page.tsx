@@ -1,13 +1,15 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Megaphone, Palette, Plus, SearchX, Send, Users } from "lucide-react";
+import { FolderOpen, Megaphone, Palette, Plus, SearchX, Send, Users } from "lucide-react";
+import { GenerateCampaignButton } from "@/components/ai/generate-campaign-button";
+import { CampaignFolderBar } from "@/components/campaigns/campaign-folders";
 import { CampaignsFilters } from "@/components/campaigns/campaigns-filters";
-import { CampaignsList } from "@/components/campaigns/campaigns-list";
-import type { CampaignRowView } from "@/components/campaigns/types";
+import { CampaignsList, type CampaignListRow } from "@/components/campaigns/campaigns-list";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { listCampaignFolders } from "@/lib/campaigns/folders";
 import { listCampaigns } from "@/lib/campaigns/queries";
 import { CAMPAIGN_STATUSES, type CampaignStatusValue } from "@/lib/campaigns/status";
 import { requireActiveWorkspace } from "@/lib/workspace";
@@ -17,7 +19,7 @@ export const metadata: Metadata = { title: "Campaigns" };
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 // The page frame is static. Everything that depends on the user or the URL
-// (?q=&status=) loads inside <Suspense>, so the frame shows instantly.
+// (?q=&status=&folder=) loads inside <Suspense>, so the frame shows instantly.
 export default function CampaignsPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <PageContainer>
@@ -42,12 +44,18 @@ async function CampaignsContent({ searchParams }: { searchParams: SearchParams }
   const sp = await searchParams;
   const q = first(sp.q).trim().slice(0, 200);
   const status = parseStatus(first(sp.status));
-  const filtered = Boolean(q || status);
+
+  // Folders first: ?folder= must be "none" or one of THIS workspace's folders
+  // (anything else, e.g. a deleted folder, just shows all campaigns).
+  const overview = await listCampaignFolders(ws.id);
+  const folderParam = first(sp.folder);
+  const folder = folderParam === "none" || overview.folders.some((f) => f.id === folderParam) ? folderParam : "";
+  const filtered = Boolean(q || status || folder);
 
   // Filtered by workspace inside listCampaigns: other workspaces' campaigns never appear.
-  const campaigns = await listCampaigns(ws.id, { q: q || undefined, status });
+  const campaigns = await listCampaigns(ws.id, { q: q || undefined, status, folder: folder || undefined });
 
-  const rows: CampaignRowView[] = campaigns.map((c) => ({
+  const rows: CampaignListRow[] = campaigns.map((c) => ({
     id: c.id,
     name: c.name,
     status: c.status as CampaignStatusValue,
@@ -67,10 +75,11 @@ async function CampaignsContent({ searchParams }: { searchParams: SearchParams }
     startedAt: c.startedAt?.toISOString() ?? null,
     finishedAt: c.finishedAt?.toISOString() ?? null,
     updatedAt: c.updatedAt.toISOString(),
+    folderId: c.folderId,
   }));
 
   // Brand-new workspace: no list, just a friendly "how it works".
-  if (!filtered && rows.length === 0) {
+  if (!filtered && rows.length === 0 && overview.folders.length === 0) {
     return (
       <>
         <Header showButton={false} />
@@ -83,15 +92,38 @@ async function CampaignsContent({ searchParams }: { searchParams: SearchParams }
     <>
       <Header showButton />
       <div className="flex min-w-0 flex-col gap-4">
-        <CampaignsFilters q={q} status={status ?? ""} />
-        {rows.length === 0 ? (
+        <CampaignFolderBar
+          folders={overview.folders}
+          total={overview.total}
+          unfiled={overview.unfiled}
+          folder={folder}
+          q={q}
+          status={status ?? ""}
+          canDelete={ws.role === "OWNER" || ws.role === "ADMIN"}
+        />
+        <CampaignsFilters q={q} status={status ?? ""} folder={folder} />
+        {rows.length === 0 && !q && !status ? (
+          <div className="flex flex-col items-center rounded-xl border bg-white px-6 py-12 text-center">
+            <FolderOpen className="size-8 text-zinc-400" aria-hidden />
+            <p className="mt-3 font-medium text-zinc-900">
+              {folder === "none" ? "Every campaign is in a folder" : folder ? "This folder is empty" : "No campaigns yet"}
+            </p>
+            <p className="mt-1 max-w-sm text-sm text-zinc-500">
+              {folder === "none"
+                ? "Campaigns you create land here until you move them into a folder."
+                : folder
+                  ? "To add a campaign, open the ⋯ menu on its row and choose “Move to folder”."
+                  : "Create your first campaign with the button above."}
+            </p>
+          </div>
+        ) : rows.length === 0 ? (
           <div className="flex flex-col items-center rounded-xl border bg-white px-6 py-12 text-center">
             <SearchX className="size-8 text-zinc-400" aria-hidden />
             <p className="mt-3 font-medium text-zinc-900">No campaigns match these filters</p>
             <p className="mt-1 text-sm text-zinc-500">Try a different search, or clear the filters.</p>
           </div>
         ) : (
-          <CampaignsList rows={rows} />
+          <CampaignsList rows={rows} folders={overview.folders} />
         )}
       </div>
     </>
@@ -105,10 +137,13 @@ function Header({ showButton }: { showButton: boolean }) {
       description="One-off emails sent to your lists and segments."
       actions={
         showButton && (
-          <Link href="/campaigns/new" className={buttonVariants()}>
-            <Plus aria-hidden />
-            Create campaign
-          </Link>
+          <>
+            <GenerateCampaignButton />
+            <Link href="/campaigns/new" className={buttonVariants()}>
+              <Plus aria-hidden />
+              Create campaign
+            </Link>
+          </>
         )
       }
     />
@@ -148,10 +183,13 @@ function CampaignsEmpty() {
           </li>
         ))}
       </ol>
-      <Link href="/campaigns/new" className={`${buttonVariants()} mt-8`}>
-        <Plus aria-hidden />
-        Create campaign
-      </Link>
+      <div className="mt-8 flex flex-col items-center gap-2 sm:flex-row">
+        <GenerateCampaignButton />
+        <Link href="/campaigns/new" className={buttonVariants()}>
+          <Plus aria-hidden />
+          Create campaign
+        </Link>
+      </div>
     </div>
   );
 }

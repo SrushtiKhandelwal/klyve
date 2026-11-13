@@ -2,10 +2,13 @@
 
 import { refresh } from "next/cache";
 import { z } from "zod";
+import { db } from "@/lib/db";
+import { isValidTimeZone } from "@/lib/format-date";
 import { requireUser } from "@/lib/session";
 import {
   createWorkspaceForUser,
   findMembership,
+  requireActiveWorkspace,
   setActiveWorkspaceCookie,
 } from "@/lib/workspace";
 
@@ -50,9 +53,14 @@ export async function createWorkspace(
     };
   }
 
+  // The browser's time zone (a hidden field the form fills in), so dates are
+  // shown in the user's own time from the start. Invalid values are ignored.
+  const rawTimezone = formData.get("timezone");
+  const timezone = typeof rawTimezone === "string" ? rawTimezone : null;
+
   let workspaceId: string;
   try {
-    const workspace = await createWorkspaceForUser(user.id, parsed.data.name);
+    const workspace = await createWorkspaceForUser(user.id, parsed.data.name, { timezone });
     workspaceId = workspace.id;
   } catch (error) {
     console.error("createWorkspace failed:", error);
@@ -95,6 +103,59 @@ export async function switchWorkspace(
   // Re-render with the new workspace, and drop cached copies of other pages
   // that still show the old one.
   await setActiveWorkspaceCookie(workspace.id);
+  refresh();
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Settings → General: workspace name, time zone and date/time formats.
+// ---------------------------------------------------------------------------
+
+const WorkspaceSettingsSchema = z.object({
+  name: CreateWorkspaceSchema.shape.name,
+  timezone: z.string().refine(isValidTimeZone, "Please choose a time zone from the list."),
+  dateFormat: z.enum(["DMY", "MDY", "YMD"], "Please choose a date format."),
+  timeFormat: z.enum(["24h", "12h"], "Please choose a time format."),
+});
+
+export type WorkspaceSettingsInput = z.input<typeof WorkspaceSettingsSchema>;
+
+export type UpdateWorkspaceSettingsResult =
+  | { ok: true }
+  | { ok: false; error: string; fieldErrors?: Partial<Record<keyof WorkspaceSettingsInput, string>> };
+
+/** Owners and admins only. Changes apply to everyone in the workspace. */
+export async function updateWorkspaceSettingsAction(
+  input: WorkspaceSettingsInput,
+): Promise<UpdateWorkspaceSettingsResult> {
+  const ws = await requireActiveWorkspace();
+  if (ws.role !== "OWNER" && ws.role !== "ADMIN") {
+    return { ok: false, error: "Only the workspace owner or an admin can change these settings." };
+  }
+
+  const parsed = WorkspaceSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    const flat = z.flattenError(parsed.error).fieldErrors;
+    const fieldErrors: Partial<Record<keyof WorkspaceSettingsInput, string>> = {};
+    for (const key of ["name", "timezone", "dateFormat", "timeFormat"] as const) {
+      const first = flat[key]?.[0];
+      if (first) fieldErrors[key] = first;
+    }
+    return { ok: false, error: "Please fix the highlighted fields.", fieldErrors };
+  }
+
+  try {
+    await db.workspace.update({
+      where: { id: ws.id },
+      data: parsed.data,
+    });
+  } catch (error) {
+    console.error("updateWorkspaceSettingsAction failed:", error);
+    return { ok: false, error: "Something went wrong saving your settings. Please try again." };
+  }
+
+  // Re-render so the sidebar's workspace name and every date on screen use
+  // the new settings straight away.
   refresh();
   return { ok: true };
 }

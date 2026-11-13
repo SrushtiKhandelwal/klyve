@@ -25,6 +25,7 @@ import {
 } from "@/lib/templates/document";
 import { findBlock, findColumn, findSection, type BlockPatch } from "@/lib/templates/editor-state";
 import { BLOCK_META, layoutIcon, RICH_TEXT_TYPES, SOCIAL_META } from "./block-meta";
+import { AiImproveMenu, isImprovable } from "./ai-improve-menu";
 import { imagePatchFromAsset } from "./block-content";
 import {
   AlignField,
@@ -135,6 +136,7 @@ function BlockProperties({ block, doc }: { block: Block; doc: EmailDocument }) {
           Type directly on the email. Use the toolbar above it for bold, links, colours and personalization.
         </p>
       )}
+      {isImprovable(block) && <AiImproveMenu block={block} />}
       <TypeSpecific block={block} update={update} settings={settings} />
       <PanelSection title="Spacing">
         <PaddingField value={block.padding} onChange={(padding) => update({ padding }, "padding")} />

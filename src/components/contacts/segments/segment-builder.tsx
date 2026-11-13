@@ -11,6 +11,7 @@ import {
   saveSegment,
   type SegmentPreviewResult,
 } from "@/app/actions/segments";
+import { SegmentAiBox } from "@/components/ai/segment-ai-box";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -146,6 +147,16 @@ export function SegmentBuilder({ segment, attributes, lists, campaigns }: Props)
     setDrafts((current) => current.filter((d) => d.uid !== uid));
   }
 
+  // ── "Describe with AI" (new segments only) ──────────────────────────────
+  // The AI's rules were already checked on the server; they replace the rows
+  // here so the user can review them before saving.
+  function applyAiSuggestion(suggestion: { name: string; rules: SegmentRules }) {
+    setMatch(suggestion.rules.match);
+    setDrafts(suggestion.rules.conditions.map((c) => draftFromCondition(`c${nextUid.current++}`, c)));
+    if (!name.trim() && suggestion.name) setName(suggestion.name.slice(0, 100));
+    setNameError(null);
+  }
+
   // ── Save / duplicate ────────────────────────────────────────────────────
   const [saving, startSaving] = useTransition();
   const [duplicating, startDuplicating] = useTransition();
@@ -202,6 +213,8 @@ export function SegmentBuilder({ segment, attributes, lists, campaigns }: Props)
             save.
           </p>
         )}
+
+        {!segment && <SegmentAiBox onApply={applyAiSuggestion} />}
 
         {/* Name */}
         <section className="rounded-xl border bg-white p-5">

@@ -1,4 +1,5 @@
 import { Suspense, type ReactNode } from "react";
+import { unstable_rethrow } from "next/navigation";
 import { AuthGuard } from "@/components/dashboard/auth-guard";
 import { BrandMark } from "@/components/dashboard/brand-mark";
 import { SidebarNav, SidebarNavFallback } from "@/components/dashboard/sidebar-nav";
@@ -10,6 +11,10 @@ import {
 import { UserMenu } from "@/components/dashboard/user-menu";
 import { VerifyEmailBanner } from "@/components/dashboard/verify-email-banner";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
+import { DatePrefsProvider } from "@/components/date-prefs-provider";
+import type { DatePrefs } from "@/lib/format-date";
+import { getActiveWorkspace } from "@/lib/workspace";
+import { getWorkspaceDatePrefs } from "@/lib/workspace-prefs";
 
 // The logged-in app shell: sidebar + main content, shared by every page in
 // the (dashboard) group (/dashboard, /contacts, /campaigns, ...).
@@ -33,8 +38,12 @@ import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 // ────────────────────────────────────────────────────────────────────────────
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  // Started here but NOT awaited (see SPEED above): the date components wait
+  // for it themselves, inside the pages' own <Suspense> sections.
+  const datePrefs = loadDatePrefs();
+
   return (
-    <>
+    <DatePrefsProvider prefs={datePrefs}>
       <Suspense fallback={null}>
         <AuthGuard />
       </Suspense>
@@ -46,8 +55,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </Suspense>
         {children}
       </SidebarShell>
-    </>
+    </DatePrefsProvider>
   );
+}
+
+/**
+ * The active workspace's date settings (time zone, date and time format),
+ * for every date shown on the dashboard. null when there's no workspace (or
+ * on a database hiccup): dates then fall back to the viewer's time zone.
+ */
+async function loadDatePrefs(): Promise<DatePrefs | null> {
+  try {
+    const workspace = await getActiveWorkspace();
+    return workspace ? await getWorkspaceDatePrefs(workspace.id) : null;
+  } catch (error) {
+    // Let Next.js's own signals (e.g. "this page is dynamic") through.
+    unstable_rethrow(error);
+    console.error("Could not load the workspace's date settings:", error);
+    return null;
+  }
 }
 
 function SidebarContents() {

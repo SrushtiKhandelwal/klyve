@@ -115,6 +115,55 @@ export function resetPasswordEmail(opts: { name?: string | null; url: string }):
   };
 }
 
+/**
+ * Names typed by users (the inviter's name, the workspace name) go into the
+ * subject and body, so squash line breaks and cap the length. Like the
+ * greeting, this stops someone using a "name" full of fake instructions.
+ * (The HTML version is escaped on top of this by `layout`.)
+ */
+function cleanName(value: string | null | undefined, fallback: string, max = 60): string {
+  const cleaned = value?.replace(/\s+/g, " ").trim().slice(0, max);
+  return cleaned || fallback;
+}
+
+/** "Join Acme on Klyve" team invite email. The link is valid for `expiresInDays` days. */
+export function teamInviteEmail(opts: {
+  inviterName?: string | null;
+  workspaceName: string;
+  roleLabel: string;
+  url: string;
+  expiresInDays: number;
+}): EmailContent {
+  const inviter = cleanName(opts.inviterName, "A teammate");
+  const workspace = cleanName(opts.workspaceName, "a workspace");
+  const article = /^[aeiou]/i.test(opts.roleLabel) ? "an" : "a";
+  const intro = `${inviter} invited you to join the "${workspace}" workspace on ${BRAND.name} as ${article} ${opts.roleLabel.toLowerCase()}. Click the button below to accept. This invite expires in ${opts.expiresInDays} days.`;
+  const footnote = `If you don't know ${inviter} or weren't expecting this, you can safely ignore this email. Nothing happens unless you accept.`;
+
+  return {
+    subject: `${inviter} invited you to ${workspace} on ${BRAND.name}`,
+    html: layout({
+      heading: `Join ${workspace} on ${BRAND.name}`,
+      name: null,
+      intro,
+      buttonLabel: "Accept invite",
+      url: opts.url,
+      footnote,
+    }),
+    text: [
+      greeting(null),
+      "",
+      intro,
+      "",
+      `Accept the invite: ${opts.url}`,
+      "",
+      footnote,
+      "",
+      `- The ${BRAND.name} team`,
+    ].join("\n"),
+  };
+}
+
 /** "Verify your email address" email. The link is valid for 24 hours. */
 export function verifyEmailEmail(opts: { name?: string | null; url: string }): EmailContent {
   const intro = `Thanks for signing up for ${BRAND.name}! Please confirm that this is your email address by clicking the button below. This link expires in 24 hours.`;

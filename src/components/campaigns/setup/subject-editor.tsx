@@ -1,7 +1,8 @@
 "use client";
 
-import { useId, useRef } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { Braces } from "lucide-react";
+import { SubjectIdeasButton, SubjectIdeasPanel, useSubjectIdeas } from "@/components/ai/subject-ideas";
 import { MergeTagMenu } from "@/components/editor/controls";
 import { Input } from "@/components/ui/input";
 import type { MergeTag } from "@/lib/templates/document";
@@ -37,6 +38,7 @@ export function SubjectEditor({
   mergeTags,
   senderName,
   limits,
+  campaignId,
 }: {
   subject: string;
   preheader: string;
@@ -45,7 +47,10 @@ export function SubjectEditor({
   mergeTags: MergeTag[];
   senderName: string;
   limits: { subjectMax: number; preheaderMax: number };
+  /** Turns on "Suggest with AI" (subject ideas from this campaign's content). */
+  campaignId?: string;
 }) {
+  const ideas = useSubjectIdeas(campaignId);
   // Links (unsubscribe, view in browser) make no sense in a subject line.
   const tags = mergeTags.filter((t) => !/_url/.test(t.tag));
   return (
@@ -59,6 +64,16 @@ export function SubjectEditor({
         placeholder="e.g. Our biggest sale of the year starts now"
         hint={subject.length > 60 ? "Tip: under 60 characters is best, so it isn't cut off on phones." : "What people see first in their inbox."}
         hintTone={subject.length > 60 ? "amber" : "zinc"}
+        action={<SubjectIdeasButton state={ideas} />}
+        below={
+          <SubjectIdeasPanel
+            state={ideas}
+            currentSubject={subject}
+            currentPreheader={preheader}
+            onPickSubject={(v) => onSubjectChange(v.slice(0, limits.subjectMax))}
+            onPickPreheader={(v) => onPreheaderChange(v.slice(0, limits.preheaderMax))}
+          />
+        }
       />
       <TextWithTags
         label="Preview text"
@@ -83,6 +98,8 @@ function TextWithTags({
   placeholder,
   hint,
   hintTone = "zinc",
+  action,
+  below,
 }: {
   label: string;
   value: string;
@@ -92,6 +109,10 @@ function TextWithTags({
   placeholder: string;
   hint: string;
   hintTone?: "zinc" | "amber";
+  /** Extra button next to "Personalize" (e.g. "Suggest with AI"). */
+  action?: ReactNode;
+  /** Shown under the field (e.g. the AI's ideas). */
+  below?: ReactNode;
 }) {
   const id = useId();
   const ref = useRef<HTMLInputElement>(null);
@@ -101,12 +122,15 @@ function TextWithTags({
         <label htmlFor={id} className="text-sm font-medium text-zinc-900">
           {label}
         </label>
-        <MergeTagMenu mergeTags={mergeTags} finalFocus={ref} onInsert={(tag) => onChange(insertAtCursor(ref.current, value, tag).slice(0, max))}>
-          <span className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-emerald-700 hover:bg-emerald-50">
-            <Braces className="size-3.5" aria-hidden />
-            Personalize
-          </span>
-        </MergeTagMenu>
+        <div className="flex items-center gap-1">
+          {action}
+          <MergeTagMenu mergeTags={mergeTags} finalFocus={ref} onInsert={(tag) => onChange(insertAtCursor(ref.current, value, tag).slice(0, max))}>
+            <span className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-emerald-700 hover:bg-emerald-50">
+              <Braces className="size-3.5" aria-hidden />
+              Personalize
+            </span>
+          </MergeTagMenu>
+        </div>
       </div>
       <Input
         ref={ref}
@@ -125,6 +149,7 @@ function TextWithTags({
           {value.length}/{max}
         </span>
       </div>
+      {below}
     </div>
   );
 }

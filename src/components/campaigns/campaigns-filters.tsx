@@ -10,11 +10,12 @@ import { CAMPAIGN_STATUSES, CAMPAIGN_STATUS_META } from "@/lib/campaigns/status"
 
 // Search box + status dropdown above the campaigns list. The filters live in
 // the URL (?q=&status=), so a filtered view can be bookmarked, and the server
-// does the filtering.
+// does the filtering. The chosen folder (?folder=, see campaign-folders.tsx)
+// is kept when these change.
 
 const ALL = "all";
 
-export function CampaignsFilters({ q, status }: { q: string; status: string }) {
+export function CampaignsFilters({ q, status, folder = "" }: { q: string; status: string; folder?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState(q);
@@ -28,6 +29,7 @@ export function CampaignsFilters({ q, status }: { q: string; status: string }) {
   function navigate(next: { q?: string; status?: string }) {
     const merged = { q: query, status, ...next };
     const params = new URLSearchParams();
+    if (folder) params.set("folder", folder);
     if (merged.q.trim()) params.set("q", merged.q.trim());
     if (merged.status) params.set("status", merged.status.toLowerCase());
     const search = params.toString();

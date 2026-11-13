@@ -10,6 +10,7 @@ import { emailDocumentSchema } from "@/lib/templates/document";
 import { TemplateError, compileTemplate, documentMergeTagErrors } from "@/lib/templates/personalize";
 import { InvalidDocumentError, renderDocument } from "@/lib/templates/render";
 import { CLICK_BASE_TAG, prepareTrackedHtml, type TrackedLink } from "@/lib/tracking/links";
+import { applyUtmTags, getCampaignUtmTags } from "@/lib/tracking/utm-settings";
 
 // The emails of an automation.
 //
@@ -88,10 +89,14 @@ function yearOfKey(key: string): string | null {
  * (checks.ts): a VERIFIED sender of this workspace, a working provider
  * (the sender's own, else the workspace default), valid merge tags, a design
  * that renders. Returns the content to freeze, or the problems.
+ *
+ * `automationName` is only used for the UTM tags (utm_campaign = "automation
+ * name – step name", made URL-friendly), when the workspace has them on.
  */
 export async function renderStepEmail(
   workspaceId: string,
   step: SendEmailStep,
+  options: { automationName?: string } = {},
 ): Promise<{ ok: true; content: StepEmailContent } | { ok: false; problems: EmailProblem[] }> {
   const label = `“${step.name}”`;
   const problems: EmailProblem[] = [];
@@ -149,7 +154,10 @@ export async function renderStepEmail(
 
   // Automation emails always track opens and clicks: the if/else step
   // "did they open / click?" depends on it.
-  const tracked = prepareTrackedHtml(rendered.html, { trackOpens: true, trackClicks: true });
+  // UTM tags first (Settings → Link tracking), so the stored links carry them.
+  const utmName = options.automationName ? `${options.automationName} – ${step.name}` : step.name;
+  const utmTags = await getCampaignUtmTags(workspaceId, utmName);
+  const tracked = prepareTrackedHtml(applyUtmTags(rendered.html, utmTags), { trackOpens: true, trackClicks: true });
   return {
     ok: true,
     content: {
@@ -254,8 +262,16 @@ export async function writeStepCampaign(
   }
   if (existing.workspaceId !== automation.workspaceId) throw new Error("Hidden campaign belongs to another workspace.");
 
+  // The links must match too: switching UTM tags on/off (Settings → Link
+  // tracking) changes them without changing the design.
+  const storedUrls = new Set(
+    (await tx.campaignLink.findMany({ where: { campaignId: existing.id }, select: { url: true } })).map((l) => l.url),
+  );
+  const sameLinks = content.links.every((l) => storedUrls.has(l.url));
+
   // The name isn't part of the email: a renamed automation only renames its campaigns.
   const unchanged =
+    sameLinks &&
     existing.subject === content.subject &&
     existing.preheader === content.preheader &&
     existing.senderId === content.senderId &&
@@ -379,7 +395,7 @@ export async function ensureStepCampaign(
     return { ok: false, error: `The email “${step.name}” isn't ready. Pause and re-activate the automation.` };
   }
 
-  const rendered = await renderStepEmail(automation.workspaceId, step);
+  const rendered = await renderStepEmail(automation.workspaceId, step, { automationName: automation.name });
   if (!rendered.ok) return { ok: false, error: rendered.problems.join(" ") };
   try {
     const id = await db.$transaction((tx) => writeStepCampaign(tx, automation, step, key, rendered.content, { now, userId: automation.createdById }));

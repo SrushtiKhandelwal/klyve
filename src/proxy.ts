@@ -42,7 +42,11 @@ export function proxy(request: NextRequest) {
   const hasSessionCookie = getSessionCookie(request) !== null;
 
   if (!hasSessionCookie && isUnder(pathname, PROTECTED_PATHS)) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    // Remember where they were going, so login can bring them back there.
+    // (The login page only accepts same-site paths; see safe-next.ts.)
+    const login = new URL("/login", request.url);
+    login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+    return NextResponse.redirect(login);
   }
 
   return NextResponse.next();

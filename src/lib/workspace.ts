@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { isValidTimeZone } from "@/lib/format-date";
 import { getCurrentUser } from "@/lib/session";
 
 // Data Access Layer for "which workspace (tenant) is the user working in?".
@@ -108,12 +109,20 @@ export async function findMembership(
   return { ...membership.workspace, role: membership.role };
 }
 
-/** Creates a workspace with `userId` as its OWNER. */
+/**
+ * Creates a workspace with `userId` as its OWNER.
+ * `timezone` (optional) is the creator's browser time zone, e.g.
+ * "Asia/Kolkata"; anything the runtime doesn't recognise is ignored and the
+ * workspace keeps the default (UTC). It can be changed in Settings → General.
+ */
 export async function createWorkspaceForUser(
   userId: string,
   name: string,
+  options: { timezone?: string | null } = {},
 ): Promise<ActiveWorkspace> {
   const base = slugify(name);
+  const timezone =
+    options.timezone && isValidTimeZone(options.timezone) ? options.timezone : undefined;
 
   // Try the clean slug first ("acme-marketing"). If someone already has it,
   // add a short random ending ("acme-marketing-k3x9qa"). The database's unique
@@ -135,6 +144,7 @@ export async function createWorkspaceForUser(
         data: {
           name,
           slug,
+          ...(timezone ? { timezone } : {}),
           members: { create: { userId, role: "OWNER" } },
         },
         select: { id: true, name: true, slug: true },
@@ -165,6 +175,16 @@ export async function setActiveWorkspaceCookie(workspaceId: string) {
     path: "/",
     maxAge: 60 * 60 * 24 * 365, // remember for a year
   });
+}
+
+/**
+ * Forgets the selected workspace (e.g. after leaving it). The next page then
+ * falls back to the user's oldest workspace, or onboarding if they have none.
+ * Only works inside Server Actions or Route Handlers.
+ */
+export async function clearActiveWorkspaceCookie() {
+  const cookieStore = await cookies();
+  cookieStore.delete(ACTIVE_WORKSPACE_COOKIE);
 }
 
 /** "Acme Marketing!" → "acme-marketing" (safe to use in a URL). */

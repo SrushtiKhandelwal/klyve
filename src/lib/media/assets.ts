@@ -88,6 +88,16 @@ export async function checkQuota(workspaceId: string, incomingBytes: number): Pr
   return null;
 }
 
+/** How much of the quota a workspace uses (for the Media page's storage meter). */
+export async function getMediaUsage(workspaceId: string): Promise<{ count: number; bytes: number }> {
+  const usage = await db.mediaAsset.aggregate({
+    where: { workspaceId },
+    _count: { _all: true },
+    _sum: { sizeBytes: true },
+  });
+  return { count: usage._count._all, bytes: usage._sum.sizeBytes ?? 0 };
+}
+
 // ── Create / list / delete ───────────────────────────────────────────────────
 
 /** Saves the (already validated) bytes, then the database row. */

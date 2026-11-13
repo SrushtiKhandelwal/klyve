@@ -104,6 +104,8 @@ export type CampaignListItem = {
   unsubscribeCount: number;
   /** e.g. "Acme News <news@acme.com>", or null if no sender is picked. */
   senderLabel: string | null;
+  /** The folder it is filed in on the Campaigns page (null = "No folder"). */
+  folderId: string | null;
 };
 
 /** The tracking switches + engagement counters (for the open/click rate columns). */
@@ -121,18 +123,23 @@ const senderLabel = (s: { name: string; email: string } | null) => (s ? `${s.nam
 
 /**
  * Campaigns, newest first. `q` searches name and subject; `status` filters.
+ * `folder` = a folder id, or "none" for campaigns in no folder (the caller
+ * checks a folder id belongs to the workspace; the workspace filter below
+ * makes another workspace's folder find nothing anyway).
  * Only REGULAR campaigns: an automation's emails are hidden campaigns
  * (kind AUTOMATION) that belong on the automation's own report, not here.
  */
 export async function listCampaigns(
   workspaceId: string,
-  options: { q?: string; status?: string } = {},
+  options: { q?: string; status?: string; folder?: string } = {},
 ): Promise<CampaignListItem[]> {
   const q = options.q?.trim().slice(0, 100);
+  const folder = options.folder === "none" ? null : cleanId(options.folder);
   const rows = await db.campaign.findMany({
     where: {
       workspaceId,
       kind: "REGULAR",
+      ...(options.folder === "none" ? { folderId: null } : folder ? { folderId: folder } : {}),
       ...(isCampaignStatus(options.status) ? { status: options.status } : {}),
       ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { subject: { contains: q, mode: "insensitive" } }] } : {}),
     },
@@ -153,13 +160,14 @@ export async function listCampaigns(
       failedCount: true,
       skippedCount: true,
       ...ENGAGEMENT_SELECT,
+      folderId: true,
       sender: { select: { name: true, email: true } },
     },
   });
   return rows.map(({ sender, ...row }) => ({ ...row, senderLabel: senderLabel(sender) }));
 }
 
-export type CampaignDetail = Omit<CampaignListItem, "senderLabel"> & {
+export type CampaignDetail = Omit<CampaignListItem, "senderLabel" | "folderId"> & {
   /**
    * AUTOMATION = the hidden email of an automation step (Phase 8). Still
    * reachable by id (e.g. its report), but it must be shown READ-ONLY: it is
@@ -429,6 +437,7 @@ export async function duplicateCampaign(workspaceId: string, userId: string, cam
           templateId: true,
           trackOpens: true,
           trackClicks: true,
+          folder: { select: { id: true, workspaceId: true } },
         },
       })
     : null;
@@ -456,6 +465,8 @@ export async function duplicateCampaign(workspaceId: string, userId: string, cam
       // Keep the tracking choice: someone who turned tracking off wants it off in the copy too.
       trackOpens: source.trackOpens,
       trackClicks: source.trackClicks,
+      // The copy goes in the same folder (if it is still this workspace's).
+      folderId: source.folder?.workspaceId === workspaceId ? source.folder.id : null,
       createdById: userId,
     },
     select: { id: true },

@@ -34,10 +34,26 @@ export function isValidTimeZone(timezone: string): boolean {
   }
 }
 
-/** All time zones the runtime knows (for a picker). */
+// Node and Chrome still list some zones by their old names (e.g. Asia/Calcutta).
+// People search for the modern name, so show that one instead. Both names
+// work everywhere, so stored values stay valid either way.
+const MODERN_ZONE_NAMES: Record<string, string> = {
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Katmandu": "Asia/Kathmandu",
+  "Asia/Saigon": "Asia/Ho_Chi_Minh",
+  "Asia/Rangoon": "Asia/Yangon",
+  "Europe/Kiev": "Europe/Kyiv",
+  "America/Godthab": "America/Nuuk",
+  "Atlantic/Faeroe": "Atlantic/Faroe",
+  "Pacific/Enderbury": "Pacific/Kanton",
+  "America/Buenos_Aires": "America/Argentina/Buenos_Aires",
+};
+
+/** All time zones the runtime knows, with modern names (for a picker). */
 export function listTimeZones(): string[] {
   const supported = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf;
-  const zones = supported ? supported("timeZone") : [];
+  const raw = supported ? supported("timeZone") : [];
+  const zones = [...new Set(raw.map((z) => MODERN_ZONE_NAMES[z] ?? z))].filter(isValidTimeZone).sort();
   return zones.includes("UTC") ? zones : ["UTC", ...zones];
 }
 
@@ -92,10 +108,13 @@ export function formatDateTime(date: Date | string, prefs: DatePrefs = DEFAULT_D
 
 /** "Asia/Kolkata (GMT+5:30)". */
 export function timeZoneLabel(timezone: string, at: Date = new Date()): string {
-  const offset =
+  const raw =
     new Intl.DateTimeFormat("en-US", { timeZone: timezone, timeZoneName: "shortOffset" })
       .formatToParts(at)
       .find((p) => p.type === "timeZoneName")?.value ?? "";
+  // Node writes zero offset as "GMT", browsers as "GMT+0". Use one spelling so
+  // the server-rendered text matches the browser (no hydration warning).
+  const offset = raw === "GMT+0" || raw === "GMT-0" ? "GMT" : raw;
   return offset && offset !== timezone ? `${timezone} (${offset})` : timezone;
 }
 

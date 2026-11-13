@@ -2,6 +2,8 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { twoFactor } from "better-auth/plugins/two-factor";
+import { BRAND } from "@/lib/brand";
 import { db } from "@/lib/db";
 import { sendSystemEmail, type SystemEmail } from "@/lib/email/system-mailer";
 import { resetPasswordEmail, verifyEmailEmail } from "@/lib/email/system-templates";
@@ -124,11 +126,25 @@ export const auth = betterAuth({
       "/request-password-reset": { window: 60, max: 3 },
       "/send-verification-email": { window: 60, max: 3 },
       "/reset-password": { window: 60, max: 5 },
+      // Two-step login codes: 5 tries a minute stops anyone guessing the
+      // 6-digit code (the plugin also locks the account after repeated misses).
+      "/two-factor/*": { window: 60, max: 5 },
     },
   },
 
-  // Must be last: lets Server Actions set the login cookie.
-  plugins: [nextCookies()],
+  plugins: [
+    // Two-step login with an authenticator app (Google Authenticator, 1Password,
+    // Authy...). Settings → Security turns it on; /two-factor asks for the code
+    // when logging in. The secret and backup codes are stored encrypted.
+    twoFactor({
+      // The name shown in the authenticator app next to the user's email.
+      issuer: BRAND.name,
+      // "Trust this device for 30 days" on the /two-factor page.
+      trustDeviceMaxAge: 60 * 60 * 24 * 30,
+    }),
+    // Must be last: lets Server Actions set the login cookie.
+    nextCookies(),
+  ],
 });
 
 export type AuthSession = typeof auth.$Infer.Session;

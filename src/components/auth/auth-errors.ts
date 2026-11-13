@@ -12,6 +12,18 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
   INVALID_TOKEN: "This link is invalid or has already been used. Please request a new one.",
   TOKEN_EXPIRED: "This link has expired. Please request a new one.",
   EMAIL_ALREADY_VERIFIED: "Your email address is already verified.",
+  // Password checks in Settings (change password, two-step login):
+  INVALID_PASSWORD: "That password isn't right. Please try again.",
+  CREDENTIAL_ACCOUNT_NOT_FOUND: "Your account has no password set.",
+  // Two-step login (authenticator app codes and backup codes):
+  INVALID_CODE: "That code isn't right. Check your authenticator app and try again.",
+  INVALID_BACKUP_CODE: "That backup code isn't right, or it has already been used.",
+  INVALID_TWO_FACTOR_COOKIE: "This login step timed out. Please log in again.",
+  TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE: "Too many wrong codes. Please log in again.",
+  ACCOUNT_TEMPORARILY_LOCKED:
+    "Too many wrong codes, so your account is locked for a few minutes. Please try again later.",
+  TOTP_ALREADY_ENABLED: "Two-step login is already turned on.",
+  TOTP_NOT_ENABLED: "Two-step login isn't turned on for this account.",
 };
 
 type AuthError = { code?: string; message?: string; status?: number };

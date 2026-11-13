@@ -1,13 +1,22 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useSyncExternalStore } from "react";
 import { Loader2 } from "lucide-react";
 import { createWorkspace } from "@/app/actions/workspace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+// The browser's time zone (e.g. "Asia/Kolkata"), sent in a hidden field so the
+// new workspace shows dates in the user's own time. The server doesn't know
+// it, so it renders an empty value first and the browser fills it in
+// (useSyncExternalStore does that without a hydration mismatch).
+const noopSubscribe = () => () => {};
+const browserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+const serverTimeZone = () => "";
+
 export function CreateWorkspaceForm() {
+  const timezone = useSyncExternalStore(noopSubscribe, browserTimeZone, serverTimeZone);
   // useActionState gives us: the last result from the server (errors),
   // the function to put on the <form>, and whether it's still running.
   const [state, formAction, pending] = useActionState(
@@ -27,6 +36,7 @@ export function CreateWorkspaceForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
+      <input type="hidden" name="timezone" value={timezone} />
       <div className="flex flex-col gap-2">
         <Label htmlFor="workspace-name">Workspace name</Label>
         <Input

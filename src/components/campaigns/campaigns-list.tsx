@@ -3,9 +3,10 @@
 import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, ExternalLink, Loader2, MoreHorizontal, Trash2, Users } from "lucide-react";
+import { Copy, ExternalLink, FolderInput, Loader2, MoreHorizontal, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { deleteCampaignAction, duplicateCampaignAction } from "@/app/actions/campaigns";
+import { MoveToFolderDialog, type FolderOption } from "@/components/campaigns/campaign-folders";
 import { CampaignStatusBadge } from "@/components/campaigns/campaign-status-badge";
 import { LocalDateTime, RelativeTime } from "@/components/campaigns/local-time";
 import { rowRates } from "@/components/campaigns/rates";
@@ -29,21 +30,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
+/** A row on /campaigns, plus the folder it is filed in (null = "No folder"). */
+export type CampaignListRow = CampaignRowView & { folderId: string | null };
+
 /**
  * The campaigns list. One row per campaign; on phones each row stacks into a
- * small card, so nothing ever scrolls sideways.
+ * small card, so nothing ever scrolls sideways. `folders` feeds each row's
+ * "Move to folder" action.
  */
-export function CampaignsList({ rows }: { rows: CampaignRowView[] }) {
+export function CampaignsList({ rows, folders = [] }: { rows: CampaignListRow[]; folders?: FolderOption[] }) {
   return (
     <ul className="divide-y overflow-hidden rounded-xl border bg-white">
       {rows.map((row) => (
-        <CampaignRow key={row.id} row={row} />
+        <CampaignRow key={row.id} row={row} folders={folders} />
       ))}
     </ul>
   );
 }
 
-function CampaignRow({ row }: { row: CampaignRowView }) {
+function CampaignRow({ row, folders }: { row: CampaignListRow; folders: FolderOption[] }) {
   const href = `/campaigns/${row.id}`;
   const notStarted = row.status === "DRAFT" || row.status === "SCHEDULED";
   // "—" for drafts, or when that kind of tracking was off (see rates.ts).
@@ -105,7 +110,7 @@ function CampaignRow({ row }: { row: CampaignRowView }) {
 
         {/* Above the row's big link, so the menu stays clickable. */}
         <div className="relative z-10 ml-auto">
-          <CampaignRowMenu row={row} />
+          <CampaignRowMenu row={row} folders={folders} />
         </div>
       </div>
     </li>
@@ -174,10 +179,11 @@ export function CampaignWhen({ row }: { row: Pick<CampaignRowView, "status" | "s
   }
 }
 
-function CampaignRowMenu({ row }: { row: CampaignRowView }) {
+function CampaignRowMenu({ row, folders }: { row: CampaignListRow; folders: FolderOption[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const canDelete = DELETABLE_STATUSES.includes(row.status);
 
   function duplicate() {
@@ -210,6 +216,10 @@ function CampaignRowMenu({ row }: { row: CampaignRowView }) {
             <Copy aria-hidden />
             Duplicate
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setMoveOpen(true)}>
+            <FolderInput aria-hidden />
+            Move to folder
+          </DropdownMenuItem>
           {canDelete && (
             <>
               <DropdownMenuSeparator />
@@ -228,6 +238,7 @@ function CampaignRowMenu({ row }: { row: CampaignRowView }) {
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
       />
+      <MoveToFolderDialog campaign={row} folders={folders} open={moveOpen} onOpenChange={setMoveOpen} />
     </>
   );
 }

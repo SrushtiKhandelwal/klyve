@@ -27,8 +27,9 @@ export default function OnboardingPage() {
         <CardHeader>
           <CardTitle className="text-xl">Create your workspace</CardTitle>
           <CardDescription>
-            A workspace holds your contacts, campaigns and templates. Invite
-            your team to it later.
+            A workspace holds your contacts, campaigns and templates. Later you
+            can invite your team from Settings → Team. Been invited to someone
+            else&apos;s workspace? Open the link in your invite email instead.
           </CardDescription>
         </CardHeader>
         <CardContent>

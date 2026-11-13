@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpenIcon, CodeIcon, InboxIcon, KeyRoundIcon, SearchX, SendIcon, TagIcon } from "lucide-react";
+import { BarChart3Icon, BookOpenIcon, CodeIcon, InboxIcon, KeyRoundIcon, SearchX, SendIcon, TagIcon } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { DailyChart } from "@/components/transactional/daily-chart";
 import { EmailLogList } from "@/components/transactional/email-log-list";
@@ -97,6 +97,10 @@ function Header({ testOptions, showTest }: { testOptions: TestSendOptions; showT
       description="One-to-one emails your app sends through the API, like receipts and password resets."
       actions={
         <>
+          <Link href="/transactional/statistics" className={buttonVariants({ variant: "outline" })}>
+            <BarChart3Icon aria-hidden />
+            Statistics
+          </Link>
           <Link href="/docs/api" className={buttonVariants({ variant: "outline" })}>
             <BookOpenIcon aria-hidden />
             API docs
