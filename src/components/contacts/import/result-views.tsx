@@ -91,7 +91,7 @@ export function SummaryView({
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Created" value={counts.created} tone="emerald" />
         <Stat label="Updated" value={counts.updated} />
-        <Stat label="Skipped" value={counts.skipped} hint="already existed" />
+        <Stat label="Skipped" value={counts.skipped} hint="already existed or on your suppression list" />
         <Stat label="Invalid" value={counts.invalid} tone={counts.invalid > 0 ? "red" : undefined} />
       </dl>
 

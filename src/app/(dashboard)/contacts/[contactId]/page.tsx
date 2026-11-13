@@ -13,10 +13,16 @@ import { ContactEditForm } from "@/components/contacts/contact-edit-form";
 import { ContactListsCard } from "@/components/contacts/contact-lists-card";
 import { ContactStatusBadge } from "@/components/contacts/contact-status-badge";
 import { ContactStatusCard } from "@/components/contacts/contact-status-card";
+import {
+  ConsentHistoryCard,
+  ConsentHistoryCardSkeleton,
+} from "@/components/contacts/privacy/consent-history-card";
+import { PrivacyCard } from "@/components/contacts/privacy/privacy-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { contactDisplayName, readAttributes } from "@/lib/contacts/common";
 import { getAttributeDefinitions, getListOptions } from "@/lib/contacts/lookups";
 import { getContact } from "@/lib/contacts/queries";
+import { canManagePrivacy } from "@/lib/gdpr/access";
 import { requireActiveWorkspace } from "@/lib/workspace";
 
 export const metadata: Metadata = { title: "Contact" };
@@ -121,6 +127,17 @@ async function ContactDetails({ params }: { params: Params }) {
         <div className="flex min-w-0 flex-col gap-6">
           <Card title="Subscription">
             <ContactStatusCard contactId={contact.id} status={contact.status} />
+          </Card>
+
+          <Card title="Consent history">
+            {/* Streams in on its own, like the email activity. */}
+            <Suspense fallback={<ConsentHistoryCardSkeleton />}>
+              <ConsentHistoryCard workspaceId={ws.id} contactId={contact.id} />
+            </Suspense>
+          </Card>
+
+          <Card title="Privacy">
+            <PrivacyCard contactId={contact.id} email={contact.email} canManage={canManagePrivacy(ws.role)} />
           </Card>
 
           <Card title="Info">

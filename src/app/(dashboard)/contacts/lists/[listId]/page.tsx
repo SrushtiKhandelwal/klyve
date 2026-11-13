@@ -8,6 +8,7 @@ import { AddContactsDialog } from "@/components/contacts/lists/add-contacts-dial
 import { formatCount, formatDate } from "@/components/contacts/lists/format";
 import { ListActionsMenu } from "@/components/contacts/lists/list-actions-menu";
 import { ListMembersTable, type MemberRow } from "@/components/contacts/lists/list-members-table";
+import { PublicBadge } from "@/components/contacts/lists/lists-grid";
 import { MembersPagination, MembersSearch } from "@/components/contacts/lists/members-search";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,16 +76,26 @@ async function ListDetail({ params, searchParams }: Props) {
     };
   });
 
-  const editable = { id: list.id, name: list.name, description: list.description };
+  const editable = {
+    id: list.id,
+    name: list.name,
+    description: list.description,
+    isPublic: list.isPublic,
+    publicName: list.publicName,
+    publicDescription: list.publicDescription,
+  };
 
   return (
     <>
       <header className="flex flex-col gap-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 flex-col gap-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight break-words text-zinc-900 sm:text-3xl">
-              {list.name}
-            </h1>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight break-words text-zinc-900 sm:text-3xl">
+                {list.name}
+              </h1>
+              {list.isPublic && <PublicBadge />}
+            </div>
             {list.description && (
               <p className="text-sm break-words whitespace-pre-line text-zinc-500 sm:text-base">
                 {list.description}

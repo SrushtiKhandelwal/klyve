@@ -11,6 +11,8 @@ import { getVerifiedSender } from "@/lib/email/senders";
 import { sendWithStoredProvider } from "@/lib/email/stored-provider";
 import { emailDocumentSchema } from "@/lib/templates/document";
 import { TemplateError, buildMergeData, personalize } from "@/lib/templates/personalize";
+import { findSuppression, notSuppressedSql } from "@/lib/suppression";
+import { suppressedMessage } from "@/lib/suppression/meta";
 import { InvalidDocumentError, renderDocument } from "@/lib/templates/render";
 import { SAMPLE_CONTACT } from "@/lib/templates/sample-data";
 import { prepareTrackedHtml, untrackHtml } from "@/lib/tracking/links";
@@ -144,7 +146,8 @@ export async function launchCampaign(
  *   means running it again (e.g. after a crash halfway) only adds what's
  *   missing; nobody gets two rows.
  * - Each batch is checked by iterateAudienceContacts (SUBSCRIBED, same
- *   workspace, exclusions) and SUBSCRIBED + workspace again in the INSERT itself.
+ *   workspace, not suppressed, exclusions) and SUBSCRIBED + workspace + not
+ *   suppressed again in the INSERT itself.
  * - recipientCount stays 0 until it has finished: the worker can use
  *   "SENDING and recipientCount = 0" to mean "not materialized yet".
  * - 0 recipients → campaign FAILED ("No subscribed contacts in this audience").
@@ -200,9 +203,10 @@ function newRecipientId(): string {
  * Inserts PENDING recipient rows for these contacts. Same effect as
  * `createMany({ skipDuplicates: true })`, but one SQL statement that is
  * about 4x faster, and it RE-CHECKS each contact at the moment of writing:
- * only contacts that are still SUBSCRIBED and in this workspace are inserted
- * (with their current email). ON CONFLICT on the unique (campaignId,
- * contactId) index skips anyone who already has a row, so it's idempotent.
+ * only contacts that are still SUBSCRIBED, in this workspace and NOT on the
+ * suppression list are inserted (with their current email). ON CONFLICT on
+ * the unique (campaignId, contactId) index skips anyone who already has a
+ * row, so it's idempotent.
  */
 async function insertRecipients(campaignId: string, workspaceId: string, contactIds: string[]): Promise<number> {
   if (contactIds.length === 0) return 0;
@@ -212,6 +216,7 @@ async function insertRecipients(campaignId: string, workspaceId: string, contact
     FROM unnest(${contactIds.map(newRecipientId)}::text[], ${contactIds}::text[]) AS u(id, contact_id)
     JOIN contact c ON c.id = u.contact_id
     WHERE c."workspaceId" = ${workspaceId} AND c.status = 'SUBSCRIBED'::"ContactStatus"
+      AND ${notSuppressedSql("c")}
     ON CONFLICT ("campaignId", "contactId") DO NOTHING
   `;
 }
@@ -361,6 +366,9 @@ export async function sendCampaignTest(
   const workspaceId = wsId(ws);
   const to = emailSchema.safeParse(input.to);
   if (!to.success) return { ok: false, message: to.error.issues[0]?.message ?? "Please enter a valid email address." };
+  // Even a test may not go to an address this workspace must never email.
+  const suppression = await findSuppression(workspaceId, to.data);
+  if (suppression) return { ok: false, message: suppressedMessage(suppression.reason) };
 
   const campaign = await db.campaign.findFirst({
     where: { id: campaignId, workspaceId },

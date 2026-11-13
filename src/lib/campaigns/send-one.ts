@@ -9,6 +9,7 @@ import { trimMessage } from "@/lib/email/providers/shared";
 import type { ProviderCredentials } from "@/lib/email/provider-configs";
 import type { EmailAddress, OutgoingEmail } from "@/lib/email/types";
 import { buildMergeData, compileTemplate, TemplateError, type CompiledTemplate } from "@/lib/templates/personalize";
+import { isSuppressed } from "@/lib/suppression";
 import { trackingUrls } from "@/lib/tracking/links";
 
 // Sends ONE campaign email to ONE recipient that the worker has already
@@ -18,6 +19,7 @@ import { trackingUrls } from "@/lib/tracking/links";
 //   1. wait for the provider's speed limit
 //   2. campaign still SENDING?        (paused/cancelled meanwhile → let go)
 //   3. contact still SUBSCRIBED?      (unsubscribed meanwhile → SKIPPED)
+//      and NOT on the suppression list (added meanwhile → SKIPPED)
 //   4. personalize the email
 //   5. reserve one email of today's daily limit
 //   6. send, and record SENT / retry later / FAILED
@@ -404,6 +406,13 @@ async function processRecipient(ctx: LaneContext, r: ClaimedRecipient, onHandOff
   }
   if (contact.status !== "SUBSCRIBED") {
     await markSkipped(r, `Not sent: the contact is ${contact.status.toLowerCase()}.`);
+    return "skipped";
+  }
+  // The address may have been suppressed after launch (e.g. a hard bounce
+  // from another campaign). One lookup on the unique (workspace, email)
+  // index, checking the address we're about to send to (plain + erasure hash).
+  if (await isSuppressed(content.workspaceId, r.email)) {
+    await markSkipped(r, "On the suppression list");
     return "skipped";
   }
 

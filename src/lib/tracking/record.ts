@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { normalizeEmail } from "@/lib/contacts/common";
 import { db } from "@/lib/db";
+import { addSuppressions } from "@/lib/suppression";
 import { hashIp } from "@/lib/tracking/ip";
 
 // THE place every engagement event goes through: opens and clicks (from the
@@ -16,7 +17,13 @@ import { hashIp } from "@/lib/tracking/ip";
 //        CampaignRecipient  first time + totals for this one email
 //        Campaign           UNIQUE people (each person counted once per type)
 //        CampaignLink       total and unique clicks per link
-//   3. updates the contact for bounces/complaints/unsubscribes.
+//   3. updates the contact for bounces/complaints/unsubscribes, and
+//   4. adds hard bounces and complaints to the workspace's suppression list,
+//      so the address is never emailed again, even if the contact is deleted
+//      and re-imported. Unsubscribes are NOT added: the contact's UNSUBSCRIBED
+//      status already stops campaigns, and the person must stay able to
+//      re-subscribe (preference centre, forms) without anyone having to dig
+//      a suppression row out first. See src/lib/suppression/index.ts.
 //
 // SAFETY
 //  - The caller only names the recipient. The campaign and workspace are read
@@ -154,6 +161,7 @@ type LockedRecipient = {
   id: string;
   campaignId: string;
   workspaceId: string;
+  campaignName: string;
   contactId: string | null;
   email: string;
   firstOpenedAt: Date | null;
@@ -184,7 +192,7 @@ export async function recordEvent(input: RecordEventInput): Promise<RecordEventR
     //    campaign/workspace FROM THE DATABASE. A link id only counts if it
     //    belongs to the same campaign.
     const rows = await tx.$queryRaw<LockedRecipient[]>(Prisma.sql`
-      SELECT r.id, r."campaignId", c."workspaceId", r."contactId", r.email,
+      SELECT r.id, r."campaignId", c."workspaceId", c.name AS "campaignName", r."contactId", r.email,
              r."firstOpenedAt", r."firstClickedAt", r."bounceType", l.id AS "linkId"
       FROM campaign_recipient r
       JOIN campaign c ON c.id = r."campaignId"
@@ -269,6 +277,12 @@ export async function recordEvent(input: RecordEventInput): Promise<RecordEventR
 
     await tx.$executeRaw(w.toSql());
     if (w.contactStatus) await updateContactStatus(tx, r, w.contactStatus);
+    // Same transaction: the event and the suppression are saved together or not at all.
+    if (e.type === "BOUNCED" && e.bounceType === "hard") {
+      await suppress(tx, r, "HARD_BOUNCE", `Hard bounce from the campaign “${r.campaignName}”`);
+    } else if (e.type === "COMPLAINED") {
+      await suppress(tx, r, "COMPLAINT", `Marked the campaign “${r.campaignName}” as spam`);
+    }
     return { recorded: true, firstOfType };
   });
 }
@@ -317,6 +331,20 @@ async function updateContactStatus(tx: Prisma.TransactionClient, r: LockedRecipi
     ? { id: r.contactId, workspaceId: r.workspaceId }
     : { workspaceId: r.workspaceId, email: normalizeEmail(r.email) };
   await tx.contact.updateMany({ where: { ...where, status: { in: change.from } }, data: { status: change.to } });
+}
+
+/**
+ * Puts this recipient's address on the workspace's suppression list. The
+ * workspace comes from the locked recipient row (never from the caller).
+ * Already there (e.g. bounced before, then complained) → left as it was.
+ */
+async function suppress(
+  tx: Prisma.TransactionClient,
+  r: LockedRecipient,
+  reason: "HARD_BOUNCE" | "COMPLAINT",
+  note: string,
+): Promise<void> {
+  await addSuppressions(r.workspaceId, [{ email: r.email, reason, note: note.slice(0, 300) }], { client: tx });
 }
 
 /**

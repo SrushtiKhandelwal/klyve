@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ListChecks } from "lucide-react";
+import { Globe, ListChecks } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { ListWithCounts } from "@/lib/contacts/lists";
 import { CreateListButton } from "./list-form-dialog";
 import { ListActionsMenu } from "./list-actions-menu";
@@ -20,15 +21,18 @@ export function ListsGrid({ lists }: { lists: ListWithCounts[] }) {
               <ListChecks className="size-5" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate font-semibold text-zinc-900">
-                <Link
-                  href={`/contacts/lists/${list.id}`}
-                  // The ::after box covers the card, so clicking anywhere opens the list.
-                  className="outline-none after:absolute after:inset-0 after:rounded-xl"
-                >
-                  {list.name}
-                </Link>
-              </h2>
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 className="truncate font-semibold text-zinc-900">
+                  <Link
+                    href={`/contacts/lists/${list.id}`}
+                    // The ::after box covers the card, so clicking anywhere opens the list.
+                    className="outline-none after:absolute after:inset-0 after:rounded-xl"
+                  >
+                    {list.name}
+                  </Link>
+                </h2>
+                {list.isPublic && <PublicBadge />}
+              </div>
               <p className="mt-0.5 line-clamp-2 text-sm break-words text-zinc-500">
                 {list.description || <span className="text-zinc-400">No description</span>}
               </p>
@@ -36,7 +40,14 @@ export function ListsGrid({ lists }: { lists: ListWithCounts[] }) {
             {/* Sits above the stretched link so the menu stays clickable. */}
             <div className="relative z-10 -mt-1 -mr-2">
               <ListActionsMenu
-                list={{ id: list.id, name: list.name, description: list.description }}
+                list={{
+                  id: list.id,
+                  name: list.name,
+                  description: list.description,
+                  isPublic: list.isPublic,
+                  publicName: list.publicName,
+                  publicDescription: list.publicDescription,
+                }}
                 totalMembers={list.totalMembers}
               />
             </div>
@@ -61,6 +72,20 @@ export function ListsGrid({ lists }: { lists: ListWithCounts[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Marks a list subscribers can choose in the preference centre. */
+export function PublicBadge() {
+  return (
+    <Badge
+      variant="outline"
+      title="Shown in the preference centre: subscribers can join or leave it themselves"
+      className="shrink-0 gap-1 border-sky-200 bg-sky-50 text-sky-700"
+    >
+      <Globe aria-hidden />
+      Public
+    </Badge>
   );
 }
 

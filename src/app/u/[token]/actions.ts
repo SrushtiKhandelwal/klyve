@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   clientIp,
+  requestMeta,
   resubscribeByToken,
   unsubscribeByToken,
   unsubscribeRateLimiter,
@@ -35,17 +36,22 @@ async function allowed(): Promise<boolean> {
   return unsubscribeRateLimiter.hit(`page:${clientIp(await headers())}`).ok;
 }
 
+/** IP + user agent for the consent record ("this came from the unsubscribe link"). */
+async function meta() {
+  return requestMeta(await headers(), "unsubscribe_link");
+}
+
 export async function unsubscribeAction(formData: FormData): Promise<void> {
   const token = readToken(formData);
   if (!(await allowed())) redirect(pageUrl(token, "busy"));
   // An invalid token changes nothing; the page then shows "invalid link".
-  await unsubscribeByToken(token);
+  await unsubscribeByToken(token, await meta());
   redirect(pageUrl(token));
 }
 
 export async function resubscribeAction(formData: FormData): Promise<void> {
   const token = readToken(formData);
   if (!(await allowed())) redirect(pageUrl(token, "busy"));
-  const result = await resubscribeByToken(token);
+  const result = await resubscribeByToken(token, await meta());
   redirect(pageUrl(token, result.ok ? "resubscribed" : "resubscribe-failed"));
 }

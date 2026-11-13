@@ -62,7 +62,7 @@ function AddContactsForm({ listId, onDone }: { listId: string; onDone: () => voi
       if (result?.success && result.summary) {
         showSummaryToast(result.summary);
         // Everything worked: close. Otherwise stay open to show the problems.
-        if (result.summary.invalidCount === 0 && result.summary.notFoundCount === 0) onDone();
+        if (!hasProblems(result.summary)) onDone();
       }
       return result;
     },
@@ -152,6 +152,7 @@ function showSummaryToast(s: AddEmailsSummary) {
   if (s.created > 0) parts.push(`${formatCount(s.created)} created`);
   if (s.invalidCount > 0) parts.push(`${formatCount(s.invalidCount)} invalid`);
   if (s.notFoundCount > 0) parts.push(`${formatCount(s.notFoundCount)} not found`);
+  if (s.suppressedCount) parts.push(`${formatCount(s.suppressedCount)} suppressed`);
   const description = parts.join(" · ");
 
   if (s.added > 0) {
@@ -161,9 +162,15 @@ function showSummaryToast(s: AddEmailsSummary) {
   }
 }
 
+/** Anything the user should look at before the dialog closes. */
+function hasProblems(s: AddEmailsSummary): boolean {
+  return s.invalidCount > 0 || s.notFoundCount > 0 || (s.suppressedCount ?? 0) > 0;
+}
+
 /** Lists the emails we couldn't add, so the user can fix them. */
 function ProblemReport({ summary }: { summary: AddEmailsSummary }) {
-  if (summary.invalidCount === 0 && summary.notFoundCount === 0) return null;
+  if (!hasProblems(summary)) return null;
+  const suppressedCount = summary.suppressedCount ?? 0;
 
   return (
     <div
@@ -183,6 +190,14 @@ function ProblemReport({ summary }: { summary: AddEmailsSummary }) {
           hint="Tick “Also create missing contacts” and add again to create them."
           items={summary.notFound}
           total={summary.notFoundCount}
+        />
+      )}
+      {suppressedCount > 0 && (
+        <ProblemGroup
+          title={`${pluralize(suppressedCount, "email")} skipped: on your suppression list`}
+          hint="These addresses must never be emailed, so they weren't created as contacts."
+          items={summary.suppressed ?? []}
+          total={suppressedCount}
         />
       )}
     </div>

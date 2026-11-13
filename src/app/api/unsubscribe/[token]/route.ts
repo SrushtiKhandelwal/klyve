@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
-import { clientIp, unsubscribeByToken, unsubscribeRateLimiter } from "@/lib/campaigns/unsubscribe";
+import {
+  clientIp,
+  requestMeta,
+  unsubscribeByToken,
+  unsubscribeRateLimiter,
+} from "@/lib/campaigns/unsubscribe";
 
 // One-click unsubscribe (RFC 8058), the address in every campaign email's
 //   List-Unsubscribe: <https://app/api/unsubscribe/<token>>
@@ -38,7 +43,9 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/unsubsc
   // unsubscribe is a legal duty, so any POST to a valid link unsubscribes.
   // (Link scanners only GET, and GET never unsubscribes.)
   try {
-    await unsubscribeByToken(token);
+    // "one_click" goes into the consent record, so the sender can see the
+    // opt-out came from the mail app's own button (the IP is the provider's).
+    await unsubscribeByToken(token, requestMeta(request.headers, "one_click"));
   } catch (err) {
     // A database hiccup: say so (the mail provider may retry), but give no details.
     console.error("[unsubscribe] one-click failed", err);

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { emailSchema } from "@/lib/contacts/common";
+import { filterSuppressed } from "@/lib/suppression";
 import { requireActiveWorkspace } from "@/lib/workspace";
 import {
   LIST_DESCRIPTION_MAX,
@@ -43,15 +44,42 @@ const ListFieldsSchema = z.object({
     .max(LIST_DESCRIPTION_MAX, `Keep the description under ${LIST_DESCRIPTION_MAX} characters.`)
     // An empty description is saved as "no description".
     .transform((value) => value || null),
+  // "Show in preference centre": subscribers can join or leave this list
+  // themselves from the link in emails (/p). Private lists are never shown.
+  isPublic: z.boolean(),
+  publicName: z
+    .string()
+    .trim()
+    .max(LIST_NAME_MAX, `Public names can be at most ${LIST_NAME_MAX} characters.`)
+    // Empty = "use the list's name", so renaming the list keeps them in step.
+    .transform((value) => value || null),
+  publicDescription: z
+    .string()
+    .trim()
+    .max(LIST_DESCRIPTION_MAX, `Keep the public description under ${LIST_DESCRIPTION_MAX} characters.`)
+    .transform((value) => value || null),
 });
+
+type ListFormValues = {
+  name: string;
+  description: string;
+  isPublic: boolean;
+  publicName: string;
+  publicDescription: string;
+};
 
 /** What the create/edit list form gets back. */
 export type ListFormState =
   | {
-      errors?: { name?: string[]; description?: string[] };
+      errors?: {
+        name?: string[];
+        description?: string[];
+        publicName?: string[];
+        publicDescription?: string[];
+      };
       message?: string;
       // Sent back so the form keeps what the user typed.
-      values?: { name: string; description: string };
+      values?: ListFormValues;
       success?: boolean;
       /** The saved list (on success). */
       list?: { id: string; name: string };
@@ -64,6 +92,18 @@ export type ListActionResult<T = object> = ({ ok: true } & T) | { ok: false; err
 function text(formData: FormData, field: string): string {
   const value = formData.get(field);
   return typeof value === "string" ? value : "";
+}
+
+/** What the list form sent, as plain values (also sent back so the form keeps them). */
+function readListForm(formData: FormData): ListFormValues {
+  return {
+    name: text(formData, "name"),
+    description: text(formData, "description"),
+    // A switch/checkbox sends "on" when on and nothing at all when off.
+    isPublic: ["on", "true"].includes(text(formData, "isPublic")),
+    publicName: text(formData, "publicName"),
+    publicDescription: text(formData, "publicDescription"),
+  };
 }
 
 function isUniqueClash(error: unknown): boolean {
@@ -99,7 +139,7 @@ export async function createList(
 ): Promise<ListFormState> {
   const ws = await requireActiveWorkspace();
 
-  const values = { name: text(formData, "name"), description: text(formData, "description") };
+  const values = readListForm(formData);
   const parsed = ListFieldsSchema.safeParse(values);
   if (!parsed.success) {
     return { errors: z.flattenError(parsed.error).fieldErrors, values };
@@ -110,7 +150,7 @@ export async function createList(
 
   try {
     const list = await db.contactList.create({
-      data: { workspaceId: ws.id, name: parsed.data.name, description: parsed.data.description },
+      data: { workspaceId: ws.id, ...parsed.data },
       select: { id: true, name: true },
     });
     refresh();
@@ -131,7 +171,7 @@ export async function updateList(
 ): Promise<ListFormState> {
   const ws = await requireActiveWorkspace();
 
-  const values = { name: text(formData, "name"), description: text(formData, "description") };
+  const values = readListForm(formData);
   const id = idSchema.safeParse(listId);
   if (!id.success) return { message: "This list no longer exists.", values };
 
@@ -148,7 +188,7 @@ export async function updateList(
     // workspace matches nothing, so nothing changes.
     const { count } = await db.contactList.updateMany({
       where: { id: id.data, workspaceId: ws.id },
-      data: { name: parsed.data.name, description: parsed.data.description },
+      data: parsed.data,
     });
     if (count === 0) return { message: "This list no longer exists.", values };
 
@@ -211,6 +251,13 @@ export type AddEmailsSummary = {
   /** Valid emails with no contact yet, when creating was NOT allowed (first 50). */
   notFound: string[];
   notFoundCount: number;
+  /**
+   * Phase 6 (suppression, Engineer A): missing emails that were NOT created
+   * because they're on the workspace's suppression list (first 50 + total).
+   * Optional so older callers keep working. They are not in `notFound`.
+   */
+  suppressed?: string[];
+  suppressedCount?: number;
 };
 
 export type AddEmailsState =
@@ -271,12 +318,20 @@ export async function addEmailsToList(
   let summary: AddEmailsSummary;
   try {
     summary = await db.$transaction(async (tx) => {
+      // SUPPRESSION (Phase 6): an address on the suppression list is never
+      // CREATED as a new contact. (An existing contact may still be put in
+      // the list: that changes nothing about who gets emailed, and every
+      // send re-checks the suppression list.)
+      const { allowed, suppressed } = createMissing
+        ? await filterSuppressed(ws.id, validEmails, { client: tx })
+        : { allowed: validEmails, suppressed: [] as string[] };
+
       let created = 0;
-      if (createMissing && validEmails.length > 0) {
+      if (createMissing && allowed.length > 0) {
         // skipDuplicates: emails that already exist in this workspace are left
         // alone (we never overwrite an existing contact's status).
         const result = await tx.contact.createMany({
-          data: validEmails.map((email) => ({
+          data: allowed.map((email) => ({
             workspaceId: ws.id,
             email,
             status: "SUBSCRIBED" as const,
@@ -306,7 +361,9 @@ export async function addEmailsToList(
             });
 
       const foundEmails = new Set(contacts.map((c) => c.email));
-      const notFound = validEmails.filter((email) => !foundEmails.has(email));
+      const suppressedMissing = suppressed.filter((email) => !foundEmails.has(email));
+      const blocked = new Set(suppressedMissing);
+      const notFound = validEmails.filter((email) => !foundEmails.has(email) && !blocked.has(email));
 
       return {
         added,
@@ -316,6 +373,8 @@ export async function addEmailsToList(
         invalidCount: invalid.length,
         notFound: notFound.slice(0, MAX_REPORTED),
         notFoundCount: notFound.length,
+        suppressed: suppressedMissing.slice(0, MAX_REPORTED),
+        suppressedCount: suppressedMissing.length,
       };
     });
   } catch (error) {

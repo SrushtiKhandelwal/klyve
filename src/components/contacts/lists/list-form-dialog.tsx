@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Switch } from "@base-ui/react/switch";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -21,7 +22,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { LIST_DESCRIPTION_MAX, LIST_NAME_MAX } from "./list-rules";
 
-export type EditableList = { id: string; name: string; description: string | null };
+export type EditableList = {
+  id: string;
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  publicName: string | null;
+  publicDescription: string | null;
+};
 
 /**
  * The "Create list" / "Edit list" dialog.
@@ -43,7 +51,7 @@ export function ListFormDialog({
           <DialogTitle>{list ? "Edit list" : "Create a list"}</DialogTitle>
           <DialogDescription>
             {list
-              ? "Rename the list or change its description. Its contacts stay the same."
+              ? "Rename the list or change how subscribers see it. Its contacts stay the same."
               : "Group contacts you want to email together, like “Newsletter” or “Customers”."}
           </DialogDescription>
         </DialogHeader>
@@ -82,7 +90,14 @@ function ListForm({ list, onDone }: { list?: EditableList; onDone: () => void })
 
   const nameErrors = state?.errors?.name;
   const descriptionErrors = state?.errors?.description;
+  const publicNameErrors = state?.errors?.publicName;
+  const publicDescriptionErrors = state?.errors?.publicDescription;
   const idPrefix = list ? `edit-list-${list.id}` : "create-list";
+
+  // Controlled so the public fields can appear/disappear as the switch moves.
+  const [isPublic, setIsPublic] = useState(state?.values?.isPublic ?? list?.isPublic ?? false);
+  // Shown as a hint in the public name box: what subscribers see if it's left empty.
+  const [nameDraft, setNameDraft] = useState(state?.values?.name ?? list?.name ?? "");
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
@@ -97,6 +112,7 @@ function ListForm({ list, onDone }: { list?: EditableList; onDone: () => void })
           required
           maxLength={LIST_NAME_MAX}
           defaultValue={state?.values?.name ?? list?.name ?? ""}
+          onChange={(e) => setNameDraft(e.target.value)}
           readOnly={pending}
           aria-invalid={nameErrors ? true : undefined}
           aria-describedby={nameErrors ? `${idPrefix}-name-error` : undefined}
@@ -128,6 +144,78 @@ function ListForm({ list, onDone }: { list?: EditableList; onDone: () => void })
             {descriptionErrors[0]}
           </p>
         )}
+      </div>
+
+      <div className="flex flex-col gap-4 rounded-lg border bg-zinc-50/60 p-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor={`${idPrefix}-public`}>Show in preference centre</Label>
+            <p id={`${idPrefix}-public-hint`} className="text-xs text-zinc-500">
+              Subscribers can choose to join or leave this list from the link in your emails.
+            </p>
+          </div>
+          {/* Base UI's Switch renders a hidden checkbox named "isPublic", so the
+              form sends "on" when it's on and nothing when it's off. */}
+          <Switch.Root
+            id={`${idPrefix}-public`}
+            name="isPublic"
+            checked={isPublic}
+            onCheckedChange={setIsPublic}
+            disabled={pending}
+            aria-describedby={`${idPrefix}-public-hint`}
+            className="relative mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full bg-zinc-300 p-0.5 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-emerald-500/40 data-[checked]:bg-emerald-600 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-60"
+          >
+            <Switch.Thumb className="size-4 rounded-full bg-white shadow-sm transition-transform data-[checked]:translate-x-4" />
+          </Switch.Root>
+        </div>
+
+        {/* Hidden (not removed) when off, so what was typed is kept and saved. */}
+        <div className={cn("flex flex-col gap-4", !isPublic && "hidden")}>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`${idPrefix}-public-name`}>
+              Public name <span className="font-normal text-zinc-400">(optional)</span>
+            </Label>
+            <Input
+              id={`${idPrefix}-public-name`}
+              name="publicName"
+              placeholder={nameDraft.trim() || "Same as the list name"}
+              autoComplete="off"
+              maxLength={LIST_NAME_MAX}
+              defaultValue={state?.values?.publicName ?? list?.publicName ?? ""}
+              readOnly={pending}
+              aria-invalid={publicNameErrors ? true : undefined}
+              aria-describedby={`${idPrefix}-public-name-hint`}
+            />
+            <p id={`${idPrefix}-public-name-hint`} className="text-xs text-zinc-500">
+              {publicNameErrors ? (
+                <span className="text-destructive">{publicNameErrors[0]}</span>
+              ) : (
+                "What subscribers see. Leave empty to use the list name."
+              )}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`${idPrefix}-public-description`}>
+              Public description <span className="font-normal text-zinc-400">(optional)</span>
+            </Label>
+            <Textarea
+              id={`${idPrefix}-public-description`}
+              name="publicDescription"
+              placeholder="e.g. Our monthly newsletter with tips and offers"
+              rows={2}
+              maxLength={LIST_DESCRIPTION_MAX}
+              defaultValue={state?.values?.publicDescription ?? list?.publicDescription ?? ""}
+              readOnly={pending}
+              aria-invalid={publicDescriptionErrors ? true : undefined}
+              aria-describedby={publicDescriptionErrors ? `${idPrefix}-public-description-error` : undefined}
+            />
+            {publicDescriptionErrors && (
+              <p id={`${idPrefix}-public-description-error`} className="text-sm text-destructive">
+                {publicDescriptionErrors[0]}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {state?.message && (

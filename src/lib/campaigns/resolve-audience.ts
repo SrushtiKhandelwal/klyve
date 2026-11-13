@@ -10,6 +10,7 @@ import {
   type CheckedSegmentRules,
 } from "@/lib/segments/engine";
 import { MAX_CONDITIONS, type SegmentRules } from "@/lib/segments/rules";
+import { notSuppressedSql } from "@/lib/suppression";
 
 // Works out WHO a campaign goes to. This decides who gets an email, so the
 // rules are strict:
@@ -17,6 +18,7 @@ import { MAX_CONDITIONS, type SegmentRules } from "@/lib/segments/rules";
 //   (everyone in ANY chosen list or segment)
 //   minus (everyone in ANY excluded list or segment)
 //   minus (anyone who is not SUBSCRIBED)            ← always
+//   minus (anyone on the suppression list)          ← always (Phase 6)
 //   minus (anyone from another workspace)           ← always
 //   with duplicates removed (one email per person).
 //
@@ -136,6 +138,8 @@ export async function resolveSources(workspaceId: string, audience: Audience): P
 // ─────────────────────────────────────────────
 
 const SUBSCRIBED = Prisma.sql`c.status = 'SUBSCRIBED'::"ContactStatus"`;
+/** The address is not on this workspace's suppression list (plain or erased/hashed). */
+const NOT_SUPPRESSED = notSuppressedSql("c");
 
 /** "Is in at least one of these lists" (the lists were already checked to be in this workspace). */
 function inAnyList(listIds: string[]): Prisma.Sql {
@@ -150,10 +154,11 @@ function notInExcludedLists(sources: ResolvedSources): Prisma.Sql {
   return Prisma.sql`AND NOT ${inAnyList(sources.excludeLists.map((l) => l.id))}`;
 }
 
-/** WHERE clause for the lists-only stream: workspace, subscribed, in a chosen list, not in an excluded one. */
+/** WHERE clause for the lists-only stream: workspace, subscribed, not suppressed, in a chosen list, not in an excluded one. */
 function listsWhere(workspaceId: string, sources: ResolvedSources): Prisma.Sql {
   return Prisma.sql`c."workspaceId" = ${workspaceId}
     AND ${SUBSCRIBED}
+    AND ${NOT_SUPPRESSED}
     AND ${inAnyList(sources.lists.map((l) => l.id))}
     ${notInExcludedLists(sources)}`;
 }
@@ -277,11 +282,12 @@ async function* candidateBatches(
   if (batch.length) yield batch;
 }
 
-/** The final check for a batch of candidate ids: same workspace, SUBSCRIBED, not in an excluded list. */
+/** The final check for a batch of candidate ids: same workspace, SUBSCRIBED, not suppressed, not in an excluded list. */
 function finalCheckWhere(workspaceId: string, sources: ResolvedSources, ids: string[]): Prisma.Sql {
   return Prisma.sql`c.id = ANY(${ids}::text[])
     AND c."workspaceId" = ${workspaceId}
     AND ${SUBSCRIBED}
+    AND ${NOT_SUPPRESSED}
     ${notInExcludedLists(sources)}`;
 }
 
@@ -294,7 +300,7 @@ const onlyLists = (s: ResolvedSources) => s.segments.length === 0 && s.excludeSe
 export type AudienceContact = { id: string; email: string };
 
 /**
- * The FINAL audience (deduped, SUBSCRIBED only, this workspace only), in
+ * The FINAL audience (deduped, SUBSCRIBED only, not suppressed, this workspace only), in
  * batches of up to `batchSize` contacts, sorted by id. Throws AudienceError
  * if a list/segment is missing or broken.
  */

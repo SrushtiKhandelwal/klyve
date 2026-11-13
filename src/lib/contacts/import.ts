@@ -1,7 +1,9 @@
 import "server-only";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
+import { recordConsentMany } from "@/lib/consent";
 import { db } from "@/lib/db";
+import { findSuppressed } from "@/lib/suppression";
 import {
   emailSchema,
   parseAttributeValue,
@@ -40,6 +42,14 @@ import {
 // later chunk arrives, so the later row simply counts as "updated" (or
 // "skipped" when the user chose "Skip them"). Either way every row lands in
 // exactly one bucket, so created + updated + skipped + invalid = total rows.
+//
+// Suppression list (Phase 6): rows whose email is on the workspace's
+// suppression list are SKIPPED with the problem "On your suppression list":
+// never created, never updated, never added to the list. (Existing contacts'
+// statuses are never changed by an import anyway.)
+//
+// Consent: each NEW contact gets a SUBSCRIBED consent record (source
+// "import"), because the user confirmed they have permission to email them.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** A problem with one row (row = spreadsheet row number), or with the whole import (row = null). */
@@ -181,9 +191,13 @@ type CleanRow = {
   attributes: Record<string, AttributeValue>; // only keys that had a value
 };
 
+/** The problem shown for a row whose email is on the suppression list. */
+export const SUPPRESSED_ROW_REASON = "On your suppression list";
+
 export async function importChunkForWorkspace(
   workspaceId: string,
   input: ImportChunkInput,
+  opts: { userId?: string | null } = {},
 ): Promise<ChunkResult> {
   const { importId, rowOffset, rows, mapping, updateExisting } = parseOrThrow(
     importChunkSchema,
@@ -227,6 +241,7 @@ export async function importChunkForWorkspace(
   const problems: ImportProblem[] = [];
   const byEmail = new Map<string, CleanRow>(); // email → last valid row with it
   const rowsPerEmail = new Map<string, number>(); // how many valid rows had it
+  const rowNumbersByEmail = new Map<string, number[]>(); // their spreadsheet row numbers
   let invalid = 0;
 
   rows.forEach((cells, i) => {
@@ -267,18 +282,30 @@ export async function importChunkForWorkspace(
     }
     byEmail.set(email, clean); // a later duplicate replaces an earlier one
     rowsPerEmail.set(email, (rowsPerEmail.get(email) ?? 0) + 1);
+    rowNumbersByEmail.set(email, [...(rowNumbersByEmail.get(email) ?? []), rowNumber]);
   });
 
-  const emails = [...byEmail.keys()];
+  const validEmails = [...byEmail.keys()];
   let created = 0;
   let updated = 0;
   let skipped = 0;
+  const createdContacts: { id: string; email: string }[] = [];
 
   // ── Write everything in ONE transaction: if anything fails, nothing from
   // this chunk is saved and the counters stay correct.
   await db.$transaction(
     async (tx) => {
       const contactIdByEmail = new Map<string, string>();
+
+      // Suppressed addresses are skipped entirely (every row that has one).
+      const suppressed = await findSuppressed(workspaceId, validEmails, { client: tx });
+      for (const email of suppressed) {
+        skipped += rowsPerEmail.get(email)!;
+        for (const row of rowNumbersByEmail.get(email)!) {
+          if (problems.length < MAX_STORED_PROBLEMS) problems.push({ row, reason: SUPPRESSED_ROW_REASON });
+        }
+      }
+      const emails = validEmails.filter((e) => !suppressed.has(e));
 
       if (emails.length > 0) {
         // Which of these emails already exist in THIS workspace? (one query)
@@ -312,6 +339,7 @@ export async function importChunkForWorkspace(
           for (const c of inserted) {
             contactIdByEmail.set(c.email, c.id);
             createdEmails.add(c.email);
+            createdContacts.push(c);
           }
 
           // Lost a race with another import? Then those contacts exist now:
@@ -371,6 +399,20 @@ export async function importChunkForWorkspace(
     },
     // 500 rows normally take well under a second; leave lots of headroom.
     { maxWait: 10_000, timeout: 60_000 },
+  );
+
+  // After the commit (so a rolled-back chunk leaves no consent rows). One
+  // INSERT for the whole chunk; recordConsentMany never throws.
+  await recordConsentMany(
+    createdContacts.map((c) => ({
+      workspaceId,
+      contactId: c.id,
+      email: c.email,
+      type: "SUBSCRIBED" as const,
+      source: "import",
+      detail: { importId, consentConfirmed: true },
+      userId: opts.userId ?? null,
+    })),
   );
 
   return { created, updated, skipped, invalid, problems };

@@ -12,6 +12,7 @@ import {
   type ImportSummary,
   type StartImportInput,
 } from "@/lib/contacts/import";
+import { requireUser } from "@/lib/session";
 import { requireActiveWorkspace } from "@/lib/workspace";
 
 // Server Actions for the CSV import wizard (/contacts/import).
@@ -30,9 +31,11 @@ export async function startImport(
 
 export async function importChunk(input: ImportChunkInput): Promise<ImportActionResult<ChunkResult>> {
   const ws = await requireActiveWorkspace();
+  // Who ran the import goes into each new contact's consent record.
+  const user = await requireUser();
   // No refresh() here on purpose: re-rendering the page after every chunk
   // would slow the import down. finishImport refreshes once at the end.
-  return run("importChunk", () => importChunkForWorkspace(ws.id, input));
+  return run("importChunk", () => importChunkForWorkspace(ws.id, input, { userId: user.id }));
 }
 
 export async function finishImport(importId: string): Promise<ImportActionResult<ImportSummary>> {

@@ -16,6 +16,11 @@ export type ListWithCounts = {
   id: string;
   name: string;
   description: string | null;
+  /** Shown in the subscriber preference centre (/p), where people choose their lists. */
+  isPublic: boolean;
+  /** The name/description subscribers see there (null = use the list's own). */
+  publicName: string | null;
+  publicDescription: string | null;
   createdAt: Date;
   /** Everyone in the list, whatever their status. */
   totalMembers: number;
@@ -36,6 +41,9 @@ export async function getListsWithCounts(workspaceId: string): Promise<ListWithC
         id: true,
         name: true,
         description: true,
+        isPublic: true,
+        publicName: true,
+        publicDescription: true,
         createdAt: true,
         // The extra contact filter is a safety net: only count contacts that
         // belong to this same workspace.
@@ -58,6 +66,9 @@ export async function getListsWithCounts(workspaceId: string): Promise<ListWithC
     id: list.id,
     name: list.name,
     description: list.description,
+    isPublic: list.isPublic,
+    publicName: list.publicName,
+    publicDescription: list.publicDescription,
     createdAt: list.createdAt,
     totalMembers: list._count.members,
     subscribedMembers: subscribedByList.get(list.id) ?? 0,
@@ -75,6 +86,9 @@ export async function getList(
       id: true,
       name: true,
       description: true,
+      isPublic: true,
+      publicName: true,
+      publicDescription: true,
       createdAt: true,
       _count: { select: { members: { where: { contact: { workspaceId } } } } },
     },
@@ -89,6 +103,9 @@ export async function getList(
     id: list.id,
     name: list.name,
     description: list.description,
+    isPublic: list.isPublic,
+    publicName: list.publicName,
+    publicDescription: list.publicDescription,
     createdAt: list.createdAt,
     totalMembers: list._count.members,
     subscribedMembers,

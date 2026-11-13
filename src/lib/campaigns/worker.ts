@@ -14,6 +14,7 @@ import {
   type LaneContext,
   type LaneProvider,
 } from "@/lib/campaigns/send-one";
+import { runHealthChecks } from "@/lib/deliverability/health";
 import { loadProvider, ProviderCredentialsError } from "@/lib/email/stored-provider";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,7 +28,10 @@ import { loadProvider, ProviderCredentialsError } from "@/lib/email/stored-provi
 //   3. pauses campaigns whose provider was deleted
 //   4. starts one "lane" per sending provider: a lane claims a batch of
 //      queued emails and sends them at the provider's speed (see below)
-//   5. marks campaigns with nothing left to send as SENT
+//   5. checks the sending health of campaigns that sent emails: one whose
+//      bounce or spam-complaint rate became dangerous is PAUSED
+//      (src/lib/deliverability/health.ts)
+//   6. marks campaigns with nothing left to send as SENT
 //
 // THE GUARANTEES, and how each one is kept
 //
@@ -211,6 +215,9 @@ async function tick(fixedNow: Date | undefined, waitForLanes: boolean): Promise<
   await step("rematerialize", undefined, () => rematerializeEmptyCampaigns(now));
   const lanes = await step("lanes", [] as Promise<void>[], () => startLanes(fixedNow, now));
   if (waitForLanes) await Promise.allSettled(lanes);
+  // Before completion, so a campaign that just turned unhealthy is paused, not finished.
+  // runHealthChecks never throws, and step() would catch it anyway.
+  await step("sending health", undefined, () => runHealthChecks());
   const completed = await step("completion", 0, () => completeFinishedCampaigns(fixedNow ?? new Date()));
   return { scheduledStarted, staleFailed, lanesRun: lanes.length, completed };
 }
@@ -296,7 +303,7 @@ async function rematerializeEmptyCampaigns(now: Date): Promise<void> {
   }
 }
 
-// 5. Every recipient processed → SENT, with counters recounted from the rows.
+// 6. Every recipient processed → SENT, with counters recounted from the rows.
 async function completeFinishedCampaigns(now: Date): Promise<number> {
   const candidates = await db.$queryRaw<{ id: string }[]>(Prisma.sql`
     SELECT c.id FROM campaign c

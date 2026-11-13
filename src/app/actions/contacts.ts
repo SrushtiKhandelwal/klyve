@@ -7,6 +7,10 @@ import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { emailSchema, parseAttributeValue, readAttributes } from "@/lib/contacts/common";
 import { getAttributeDefinitions } from "@/lib/contacts/lookups";
+import { recordConsent, recordConsentMany } from "@/lib/consent";
+import { getCurrentUser } from "@/lib/session";
+import { findSuppression } from "@/lib/suppression";
+import { suppressedMessage } from "@/lib/suppression/meta";
 import { requireActiveWorkspace } from "@/lib/workspace";
 
 // Server Actions for contacts. They are public endpoints: anyone can call them
@@ -15,6 +19,10 @@ import { requireActiveWorkspace } from "@/lib/workspace";
 //   2. validates its input with zod,
 //   3. filters EVERY query by `workspaceId: ws.id`, so an id from another
 //      workspace simply matches nothing.
+//
+// Suppression list (Phase 6): an address on the workspace's suppression list
+// can't be added as a contact, given to a contact by editing, or re-subscribed.
+// The user has to remove it from the list first (Contacts → Suppression).
 
 // ─── Shared types & schemas ─────────────────────────────────────────────────
 
@@ -52,6 +60,17 @@ const contactFieldsSchema = z.object({
 });
 
 const DUPLICATE_EMAIL = "A contact with this email already exists in this workspace.";
+
+/** The logged-in user's id, for "who did this" in consent records. */
+async function currentUserId(): Promise<string | null> {
+  return (await getCurrentUser())?.id ?? null;
+}
+
+/** null if the address may be used, else the friendly "it's suppressed" message. */
+async function suppressionProblem(workspaceId: string, email: string): Promise<string | null> {
+  const row = await findSuppression(workspaceId, email);
+  return row ? suppressedMessage(row.reason) : null;
+}
 
 function isUniqueClash(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
@@ -126,6 +145,10 @@ export async function createContact(formData: FormData): Promise<ContactFormResu
     return { ok: false, errors: { listIds: ["One of the selected lists no longer exists."] } };
   }
 
+  // Never (re)create an address this workspace must not email.
+  const suppressed = await suppressionProblem(ws.id, email);
+  if (suppressed) return { ok: false, errors: { email: [suppressed] } };
+
   // Don't store empty values: a missing key already means "no value".
   const attributes = Object.fromEntries(
     Object.entries(attrs.values).filter(([, value]) => value !== null),
@@ -145,6 +168,17 @@ export async function createContact(formData: FormData): Promise<ContactFormResu
       },
       select: { id: true },
     });
+    if (status === "SUBSCRIBED") {
+      // Proof of consent: a team member added them as subscribed by hand.
+      await recordConsent({
+        workspaceId: ws.id,
+        contactId: contact.id,
+        email,
+        type: "SUBSCRIBED",
+        source: "manual",
+        userId: await currentUserId(),
+      });
+    }
     refresh();
     return { ok: true, contactId: contact.id, message: "Contact added." };
   } catch (error) {
@@ -182,9 +216,15 @@ export async function updateContact(
   // values for fields that aren't on the form are kept as they are.
   const existing = await db.contact.findFirst({
     where: { id: id.data, workspaceId: ws.id },
-    select: { attributes: true },
+    select: { attributes: true, email: true },
   });
   if (!existing) return { ok: false, message: "Contact not found." };
+
+  // Changing the address to a suppressed one would sneak it back in.
+  if (parsed.data.email !== existing.email) {
+    const suppressed = await suppressionProblem(ws.id, parsed.data.email);
+    if (suppressed) return { ok: false, errors: { email: [suppressed] } };
+  }
 
   const attributes = { ...readAttributes(existing.attributes) };
   for (const [key, value] of Object.entries(attrs.values)) {
@@ -244,6 +284,8 @@ const statusSchema = z.object({
  * BOUNCED / COMPLAINED contacts are protected: emailing them again hurts the
  * sender's reputation, so they can only be re-subscribed when the user has
  * explicitly confirmed the warning (overrideBlocked = true).
+ * An address on the suppression list can never be re-subscribed here (not
+ * even with the override): remove it from the suppression list first.
  */
 export async function setContactStatus(input: {
   contactId: string;
@@ -258,9 +300,14 @@ export async function setContactStatus(input: {
 
   const contact = await db.contact.findFirst({
     where: { id: contactId, workspaceId: ws.id },
-    select: { status: true },
+    select: { status: true, email: true },
   });
   if (!contact) return { ok: false, message: "Contact not found." };
+
+  if (status === "SUBSCRIBED") {
+    const suppressed = await suppressionProblem(ws.id, contact.email);
+    if (suppressed) return { ok: false, message: suppressed };
+  }
 
   const blocked = contact.status === "BOUNCED" || contact.status === "COMPLAINED";
   if (blocked && status === "UNSUBSCRIBED") {
@@ -279,6 +326,18 @@ export async function setContactStatus(input: {
   });
   if (result.count === 0) {
     return { ok: false, message: "This contact changed in the meantime. Please reload and try again." };
+  }
+
+  if (contact.status !== status) {
+    await recordConsent({
+      workspaceId: ws.id,
+      contactId,
+      email: contact.email,
+      type: "STATUS_CHANGED",
+      source: "manual",
+      detail: { from: contact.status, to: status, ...(overrideBlocked ? { overrideBlocked: true } : {}) },
+      userId: await currentUserId(),
+    });
   }
 
   refresh();
@@ -366,17 +425,33 @@ export async function bulkUnsubscribeContacts(contactIds: string[]): Promise<Con
 
   // Only SUBSCRIBED contacts change. Bounced/complained ones already can't be
   // emailed, and we keep that status because it says why.
-  const result = await db.contact.updateMany({
+  // updateManyAndReturn tells us exactly who changed, for the consent record.
+  const changed = await db.contact.updateManyAndReturn({
     where: { id: { in: ids.data }, workspaceId: ws.id, status: "SUBSCRIBED" },
     data: { status: "UNSUBSCRIBED" },
+    select: { id: true, email: true },
   });
+  if (changed.length > 0) {
+    const userId = await currentUserId();
+    await recordConsentMany(
+      changed.map((c) => ({
+        workspaceId: ws.id,
+        contactId: c.id,
+        email: c.email,
+        type: "STATUS_CHANGED" as const,
+        source: "manual",
+        detail: { from: "SUBSCRIBED", to: "UNSUBSCRIBED", bulk: true },
+        userId,
+      })),
+    );
+  }
   refresh();
   return {
     ok: true,
     message:
-      result.count === 0
+      changed.length === 0
         ? "None of the selected contacts were subscribed."
-        : `Unsubscribed ${plural(result.count, "contact")}.`,
+        : `Unsubscribed ${plural(changed.length, "contact")}.`,
   };
 }
 

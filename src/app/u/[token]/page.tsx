@@ -92,6 +92,19 @@ export default async function UnsubscribePage({ params, searchParams }: PageProp
               Unsubscribe
             </SubmitButton>
           </form>
+          {/* A softer option than leaving everything: pick lists on /p (same
+              token). Only when the sender has lists people can choose from. */}
+          {ctx.hasPublicLists && (
+            <p className="mt-6 border-t border-zinc-100 pt-5 text-sm text-zinc-500">
+              Prefer fewer emails?{" "}
+              <a
+                href={`/p/${encodeURIComponent(token)}`}
+                className="font-medium text-zinc-700 underline underline-offset-2 hover:text-zinc-900"
+              >
+                Choose what you receive
+              </a>
+            </p>
+          )}
         </>
       )}
 
