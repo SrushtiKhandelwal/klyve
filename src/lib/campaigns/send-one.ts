@@ -413,6 +413,9 @@ async function processRecipient(ctx: LaneContext, r: ClaimedRecipient, onHandOff
     ...buildMergeData(contact, {
       unsubscribeUrl: absoluteUrl(`/u/${unsubscribeToken}`), // the page link in the email body
       viewInBrowserUrl: absoluteUrl(`/v/${createRecipientToken(r.id, "view")}`),
+      // The preference centre uses the same token as unsubscribe: whoever may
+      // unsubscribe this address may also choose which lists to stay on.
+      preferencesUrl: absoluteUrl(`/p/${unsubscribeToken}`),
       workspaceName: content.workspaceName,
     }),
     // Phase 5: this person's tracking addresses. Launch rewrote links to

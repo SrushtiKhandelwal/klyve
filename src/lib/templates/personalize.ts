@@ -100,6 +100,8 @@ export type MergeData = {
   unsubscribe_url: string;
   /** Link to this email on the web (/v/<token>). Empty in previews/tests. */
   view_in_browser_url: string;
+  /** Link to this person's preference centre (/p/<token>). Empty in previews/tests. */
+  preferences_url: string;
   current_year: number;
   workspace: { name: string };
 };
@@ -115,6 +117,7 @@ export type MergeContact = {
 export type MergeExtras = {
   unsubscribeUrl?: string;
   viewInBrowserUrl?: string;
+  preferencesUrl?: string;
   workspaceName?: string;
   /** For tests; defaults to now. */
   now?: Date;
@@ -143,6 +146,7 @@ export function buildMergeData(contact: MergeContact, extras: MergeExtras = {}):
     contact: { ...fields, ...builtin },
     unsubscribe_url: extras.unsubscribeUrl ?? "",
     view_in_browser_url: extras.viewInBrowserUrl ?? "",
+    preferences_url: extras.preferencesUrl ?? "",
     current_year: (extras.now ?? new Date()).getUTCFullYear(),
     workspace: { name: extras.workspaceName ?? "" },
   };
@@ -297,7 +301,15 @@ export function personalize(template: EmailParts, data: MergeData): EmailParts {
 // ── Checking merge tags before saving ────────────────────────────────────────
 
 // "tracking" is filled by the sender (open pixel / click links), never typed by users.
-const KNOWN_ROOTS = new Set(["contact", "unsubscribe_url", "view_in_browser_url", "current_year", "workspace", "tracking"]);
+const KNOWN_ROOTS = new Set([
+  "contact",
+  "unsubscribe_url",
+  "view_in_browser_url",
+  "preferences_url",
+  "current_year",
+  "workspace",
+  "tracking",
+]);
 const BUILTIN_KEYS = new Set<string>(BUILTIN_FIELDS.map((f) => f.key));
 
 /**

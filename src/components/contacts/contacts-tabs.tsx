@@ -11,6 +11,7 @@ export const CONTACTS_TABS = [
   { href: "/contacts/segments", label: "Segments" },
   { href: "/contacts/attributes", label: "Fields" },
   { href: "/contacts/import", label: "Import" },
+  { href: "/contacts/suppression", label: "Suppression" },
 ] as const;
 
 function isActive(pathname: string, tab: (typeof CONTACTS_TABS)[number]) {

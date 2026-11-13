@@ -17,7 +17,7 @@ export const emailSchema = z
   .pipe(z.email("Please enter a valid email address."))
   .transform(normalizeEmail);
 
-export const CONTACT_STATUSES = ["SUBSCRIBED", "UNSUBSCRIBED", "BOUNCED", "COMPLAINED"] as const;
+export const CONTACT_STATUSES = ["SUBSCRIBED", "UNSUBSCRIBED", "BOUNCED", "COMPLAINED", "PENDING"] as const;
 export type ContactStatusValue = (typeof CONTACT_STATUSES)[number];
 
 /** Labels + badge colours for each status, so every screen shows them the same way. */
@@ -44,6 +44,11 @@ export const CONTACT_STATUS_META: Record<
     label: "Complained",
     description: "Marked an email as spam. Will not receive campaigns.",
     className: "bg-red-50 text-red-700 ring-red-600/20",
+  },
+  PENDING: {
+    label: "Awaiting confirmation",
+    description: "Double opt-in: hasn't clicked the confirmation link yet. Won't receive campaigns until they do.",
+    className: "bg-sky-50 text-sky-700 ring-sky-600/20",
   },
 };
 

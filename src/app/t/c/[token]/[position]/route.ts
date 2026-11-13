@@ -77,6 +77,7 @@ async function handle(request: NextRequest, ctx: Context, countClick: boolean): 
       ...buildMergeData(contact, {
         unsubscribeUrl: absoluteUrl(`/u/${createRecipientToken(recipient.id, "unsubscribe")}`),
         viewInBrowserUrl: absoluteUrl(`/v/${createRecipientToken(recipient.id, "view")}`),
+        preferencesUrl: absoluteUrl(`/p/${createRecipientToken(recipient.id, "unsubscribe")}`),
         workspaceName: campaign.workspace.name,
       }),
       tracking: trackingUrls(recipient.id),

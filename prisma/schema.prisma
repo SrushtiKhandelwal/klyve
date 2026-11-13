@@ -95,13 +95,24 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Phase 6 — double opt-in: new subscribers from forms/API must click a
+  /// confirmation link before they can receive campaigns.
+  doubleOptIn   Boolean @default(false)
+  /// The verified sender the confirmation email comes from (null = none set).
+  optInSenderId String?
+  /// Customisable confirmation email (null = our default wording).
+  optInSubject  String?
+  optInMessage  String?
+
   members WorkspaceMember[]
 
-  contacts   Contact[]
-  lists      ContactList[]
-  attributes ContactAttribute[]
-  segments   Segment[]
-  imports    ContactImport[]
+  contacts      Contact[]
+  suppressions  Suppression[]
+  consentEvents ConsentEvent[]
+  lists         ContactList[]
+  attributes    ContactAttribute[]
+  segments      Segment[]
+  imports       ContactImport[]
 
   sendingProviders SendingProvider[]
   senders          Sender[]
@@ -142,6 +153,7 @@ enum ContactStatus {
   UNSUBSCRIBED // clicked unsubscribe or was unsubscribed by the workspace
   BOUNCED // the address doesn't exist / keeps failing (set in Phase 5)
   COMPLAINED // marked one of our emails as spam (set in Phase 5)
+  PENDING // double opt-in: confirmation email sent, link not clicked yet (Phase 6)
 }
 
 model Contact {
@@ -158,11 +170,15 @@ model Contact {
   attributes  Json          @default("{}")
   /// Where the contact came from: "manual", "import", "form", "api".
   source      String        @default("manual")
+  /// Double opt-in: when the confirmation email was last sent / when they confirmed.
+  optInSentAt DateTime?
+  confirmedAt DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   lists              ListMembership[]
   campaignRecipients CampaignRecipient[]
+  consentEvents      ConsentEvent[]
 
   @@unique([workspaceId, email])
   @@index([workspaceId, createdAt])
@@ -171,13 +187,18 @@ model Contact {
 }
 
 model ContactList {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  name        String
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name              String
+  description       String?
+  /// Phase 6 — shown in the subscriber preference centre, where people can
+  /// choose which public lists to stay on. Private lists are never shown.
+  isPublic          Boolean   @default(false)
+  publicName        String?
+  publicDescription String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   members ListMembership[]
   imports ContactImport[]
@@ -657,4 +678,74 @@ model EmailEvent {
   @@index([recipientId, type])
   @@index([workspaceId, createdAt])
   @@map("email_event")
+}
+
+// ─────────────────────────────────────────────
+// Phase 6: Compliance & deliverability
+// ─────────────────────────────────────────────
+
+enum SuppressionReason {
+  MANUAL // added by the workspace (e.g. a bounce notice from Gmail)
+  HARD_BOUNCE // the address doesn't exist (from a provider webhook)
+  COMPLAINT // marked an email as spam
+  UNSUBSCRIBE // asked never to be emailed again
+  IMPORT // imported from another tool's suppression/unsubscribe list
+  ERASURE // GDPR "forget me": only a hash of the address is kept
+}
+
+/// Addresses that must NEVER be emailed by this workspace, whether or not
+/// they are (still) a contact. Checked when building a campaign's audience,
+/// right before each send, and when importing contacts.
+model Suppression {
+  id          String            @id @default(cuid())
+  workspaceId String
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// Lower-cased address. For ERASURE rows this is "sha256:<hex>" instead,
+  /// so the person can't be re-added without us storing their address.
+  email       String
+  reason      SuppressionReason
+  note        String?
+  createdById String?
+  createdAt   DateTime          @default(now())
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId, createdAt])
+  @@map("suppression")
+}
+
+enum ConsentEventType {
+  SUBSCRIBED // added with permission (manual, import with consent, form)
+  CONFIRMATION_SENT // double opt-in email sent
+  CONFIRMED // clicked the double opt-in link
+  UNSUBSCRIBED
+  RESUBSCRIBED
+  PREFERENCES_UPDATED // changed list choices in the preference centre
+  STATUS_CHANGED // changed by the workspace (e.g. marked subscribed manually)
+  ERASED // GDPR erasure (contact deleted; this row keeps only a hash)
+}
+
+/// Proof of consent: who agreed to what, when and how. Kept even if the
+/// contact is deleted (contactId becomes null), as anti-spam laws expect.
+model ConsentEvent {
+  id          String           @id @default(cuid())
+  workspaceId String
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contactId   String?
+  contact     Contact?         @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  /// Address at the time (or "sha256:<hex>" after an erasure).
+  email       String
+  type        ConsentEventType
+  /// Where it happened: "manual", "import", "form", "api", "unsubscribe_link",
+  /// "one_click", "preference_centre", "confirmation_link", "webhook", "erasure".
+  source      String
+  ipHash      String?
+  userAgent   String?
+  /// Extra facts, e.g. { "importId": "...", "lists": ["..."] }.
+  detail      Json?
+  createdById String?
+  createdAt   DateTime         @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([contactId, createdAt])
+  @@map("consent_event")
 }

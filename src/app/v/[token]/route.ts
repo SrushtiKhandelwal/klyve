@@ -98,6 +98,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/v/[token]">)
   const data: MergeData & { tracking: TrackingMergeData } = {
     ...buildMergeData(contact, {
       unsubscribeUrl: absoluteUrl(`/u/${createRecipientToken(recipient.id, "unsubscribe")}`),
+      preferencesUrl: absoluteUrl(`/p/${createRecipientToken(recipient.id, "unsubscribe")}`),
       workspaceName: campaign.workspace.name,
     }),
     view_in_browser_url: absoluteUrl(`/v/${token}`),

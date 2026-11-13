@@ -14,8 +14,10 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 /**
  * "unsubscribe" → /u and /api/unsubscribe, "view" → /v (view in browser),
  * "track" → /t/o (open pixel) and /t/c (tracked link clicks).
+ * "confirm" → /c (double opt-in confirmation; the id is a CONTACT id, not a recipient id).
+ * The /p preference centre reuses "unsubscribe" tokens.
  */
-export type TokenPurpose = "unsubscribe" | "view" | "track";
+export type TokenPurpose = "unsubscribe" | "view" | "track" | "confirm";
 
 function secret(purpose: TokenPurpose): Buffer {
   const base = process.env.ENCRYPTION_KEY || process.env.BETTER_AUTH_SECRET;

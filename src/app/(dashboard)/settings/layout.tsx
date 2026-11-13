@@ -7,6 +7,8 @@ const SETTINGS_TABS: SectionTab[] = [
   { href: "/settings/senders", label: "Senders" },
   { href: "/settings/domains", label: "Domains" },
   { href: "/settings/brand", label: "Brand" },
+  { href: "/settings/compliance", label: "Compliance" },
+  { href: "/settings/deliverability", label: "Deliverability" },
 ];
 
 // Shared frame for Settings: tabs on top, the current tab's page below.
