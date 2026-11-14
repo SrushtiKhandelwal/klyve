@@ -1,57 +1,47 @@
 import Link from "next/link";
+import { ArrowRightIcon } from "lucide-react";
 import { BrandMark } from "@/components/landing/brand-mark";
-import { CtaLink } from "@/components/landing/cta-link";
-
-// Links to the sections of the landing page. They start with "/" so they
-// also work from /terms and /privacy (they jump back to the home page).
-const NAV_LINKS = [
-  { href: "/#how-it-works", label: "How it works" },
-  { href: "/#features", label: "Features" },
-  { href: "/#developers", label: "Developers" },
-  { href: "/#pricing", label: "Pricing" },
-  { href: "/#faq", label: "FAQ" },
-];
+import { DesktopNav, HeaderShell, MobileNav } from "@/components/landing/site-nav";
 
 // The top bar of every public page (landing, terms, privacy). It stays at the
-// top while you scroll. It's static: no login check, so these pages can be
-// prerendered.
+// top while you scroll (HeaderShell turns it white with a soft shadow then).
+// No login check here, so these pages can be prerendered.
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white">
+    <>
       {/* Keyboard users can jump straight past the navigation. */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow"
       >
         Skip to content
       </a>
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+
+      <HeaderShell>
         <BrandMark />
 
-        <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="rounded-md px-3 py-2 text-sm text-zinc-600 transition-colors outline-none hover:text-zinc-950 focus-visible:ring-3 focus-visible:ring-emerald-600/40"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        <DesktopNav />
 
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2">
           <Link
             href="/login"
-            className="rounded-md px-3 py-2 text-sm font-medium text-zinc-700 transition-colors outline-none hover:text-zinc-950 focus-visible:ring-3 focus-visible:ring-emerald-600/40"
+            className="hidden h-10 items-center rounded-xl px-3.5 text-[14.5px] font-medium text-zinc-700 outline-none transition-colors hover:bg-[#F6F2EA] hover:text-zinc-950 focus-visible:ring-3 focus-visible:ring-emerald-600/40 sm:inline-flex"
           >
             Log in
           </Link>
-          <CtaLink href="/signup" size="sm">
+          <Link
+            href="/signup"
+            className="group/cta inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#10201B] px-3.5 text-[14px] font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_1px_2px_rgb(16_32_27/0.3)] outline-none transition-colors hover:bg-[#1D3A31] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:px-4 sm:text-[14.5px]"
+          >
             Get started
-          </CtaLink>
+            <ArrowRightIcon
+              aria-hidden="true"
+              className="hidden size-4 transition-transform group-hover/cta:translate-x-0.5 motion-reduce:transition-none sm:block"
+            />
+          </Link>
+          <MobileNav />
         </div>
-      </div>
-    </header>
+      </HeaderShell>
+    </>
   );
 }
