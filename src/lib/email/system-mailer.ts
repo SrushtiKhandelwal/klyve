@@ -26,21 +26,54 @@ const globalForMailer = globalThis as unknown as {
   systemTransportUrl?: string;
 };
 
-function getTransport(url: string): Transporter {
-  if (globalForMailer.systemTransport && globalForMailer.systemTransportUrl === url) {
+// Timeouts (milliseconds) so a slow or dead SMTP server can't make a
+// login/reset request hang for minutes (nodemailer's defaults are huge).
+const TIMEOUTS = { connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 20_000, dnsTimeout: 10_000 };
+
+type SmtpConfig =
+  | { kind: "url"; url: string }
+  | { kind: "parts"; host: string; port: number; user: string; pass: string };
+
+/**
+ * Where Klyve's own emails go. Two ways to set it:
+ * 1. SYSTEM_SMTP_HOST + SYSTEM_SMTP_USER + SYSTEM_SMTP_PASS (+ optional
+ *    SYSTEM_SMTP_PORT, default 465): easiest, because the password can be
+ *    pasted as-is (no URL encoding of "/", "+" or "=").
+ * 2. SYSTEM_SMTP_URL, e.g. smtps://user:pass@host:465 (special characters in
+ *    the password must be URL-encoded).
+ */
+function getSmtpConfig(): SmtpConfig | null {
+  const host = process.env.SYSTEM_SMTP_HOST?.trim();
+  const user = process.env.SYSTEM_SMTP_USER?.trim();
+  const pass = process.env.SYSTEM_SMTP_PASS?.trim();
+  if (host && user && pass) {
+    const port = Number(process.env.SYSTEM_SMTP_PORT?.trim() || 465);
+    return { kind: "parts", host, port: Number.isInteger(port) && port > 0 ? port : 465, user, pass };
+  }
+  const url = process.env.SYSTEM_SMTP_URL?.trim();
+  return url ? { kind: "url", url } : null;
+}
+
+function getTransport(config: SmtpConfig): Transporter {
+  // Reuse the transport while the settings stay the same.
+  const key = JSON.stringify(config);
+  if (globalForMailer.systemTransport && globalForMailer.systemTransportUrl === key) {
     return globalForMailer.systemTransport;
   }
-  const transport = nodemailer.createTransport({
-    url,
-    // Timeouts (milliseconds) so a slow or dead SMTP server can't make a
-    // login/reset request hang for minutes (nodemailer's defaults are huge).
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
-    dnsTimeout: 10_000,
-  });
+  const transport =
+    config.kind === "url"
+      ? nodemailer.createTransport({ url: config.url, ...TIMEOUTS })
+      : nodemailer.createTransport({
+          host: config.host,
+          port: config.port,
+          // 465 = TLS from the start; 587 = must upgrade with STARTTLS.
+          secure: config.port === 465,
+          requireTLS: config.port === 587,
+          auth: { user: config.user, pass: config.pass },
+          ...TIMEOUTS,
+        });
   globalForMailer.systemTransport = transport;
-  globalForMailer.systemTransportUrl = url;
+  globalForMailer.systemTransportUrl = key;
   return transport;
 }
 
@@ -57,13 +90,13 @@ function findLinks(text: string): string[] {
  * reveal whether an account exists).
  */
 export async function sendSystemEmail({ to, subject, html, text }: SystemEmail): Promise<void> {
-  const smtpUrl = process.env.SYSTEM_SMTP_URL?.trim();
+  const smtp = getSmtpConfig();
 
-  if (!smtpUrl) {
+  if (!smtp) {
     if (isProduction) {
       throw new Error(
-        "SYSTEM_SMTP_URL is not set. Klyve can't send password-reset or verification emails. " +
-          "Set it to your SMTP server, e.g. smtp://user:pass@smtp.example.com:587",
+        "No SMTP server is set, so Klyve can't send password-reset or verification emails. " +
+          "Set SYSTEM_SMTP_HOST, SYSTEM_SMTP_USER and SYSTEM_SMTP_PASS (or SYSTEM_SMTP_URL).",
       );
     }
     // Development without a mail server: print the email so you can still
@@ -71,7 +104,7 @@ export async function sendSystemEmail({ to, subject, html, text }: SystemEmail):
     // never written to production logs.)
     console.info(
       [
-        "[system-email] SYSTEM_SMTP_URL is empty, so this email was NOT sent:",
+        "[system-email] No SMTP server is set, so this email was NOT sent:",
         `  To:      ${to}`,
         `  Subject: ${subject}`,
         ...findLinks(text).map((link) => `  Link:    ${link}`),
@@ -82,5 +115,5 @@ export async function sendSystemEmail({ to, subject, html, text }: SystemEmail):
 
   const from = process.env.SYSTEM_EMAIL_FROM?.trim() || `${BRAND.name} <no-reply@localhost>`;
 
-  await getTransport(smtpUrl).sendMail({ from, to, subject, html, text });
+  await getTransport(smtp).sendMail({ from, to, subject, html, text });
 }
