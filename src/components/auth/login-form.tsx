@@ -18,6 +18,18 @@ type FieldErrors = { email?: string; password?: string };
 // rendered inside <Suspense>; the rest of the form doesn't have to wait.
 function ResetSuccessNotice() {
   const searchParams = useSearchParams();
+  // After "Delete account" (Settings → Profile) the user lands on /login?deleted=1.
+  if (searchParams.get("deleted") === "1") {
+    return (
+      <div
+        role="status"
+        className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+      >
+        <CircleCheckIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <span>Your account was deleted. Thanks for trying Klyve.</span>
+      </div>
+    );
+  }
   if (searchParams.get("reset") !== "1") return null;
 
   return (

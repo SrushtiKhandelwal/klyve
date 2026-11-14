@@ -158,8 +158,9 @@ export default function PrivacyPage() {
           those people are never emailed again by mistake.
         </li>
         <li>
-          When you ask us to delete your account, we delete its data within 30 days. Copies in our nightly backups
-          are overwritten within 14 days after that.
+          When you delete your account (Settings → Profile), your login and the workspaces only you use are deleted
+          straight away; workspaces you share with others stay for them. If you ask us by email instead, we do it
+          within 30 days. Copies in our nightly backups are gone within 14 days after that.
         </li>
       </ul>
 
@@ -170,8 +171,8 @@ export default function PrivacyPage() {
       </p>
       <ul>
         <li>
-          <strong>Users:</strong> you can change most details yourself in the app. To delete your account, or for
-          anything else, email <InlineContactEmail />. We&apos;ll reply within 30 days.
+          <strong>Users:</strong> you can change most details yourself in the app, and delete your account in
+          Settings → Profile. For anything else, email <InlineContactEmail />. We&apos;ll reply within 30 days.
         </li>
         <li>
           <strong>Contacts of a {BRAND.name} user:</strong> please contact the sender who emailed you first; they

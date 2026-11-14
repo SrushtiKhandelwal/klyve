@@ -3,14 +3,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { NameForm } from "@/components/settings/profile/name-form";
+import { DeleteAccount } from "@/components/settings/profile/delete-account";
 import { PasswordForm } from "@/components/settings/profile/password-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getDeletionPlan } from "@/lib/account-deletion";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Profile" };
 
-// Settings → Profile: your own account (not the workspace): name, email, password.
+// Settings → Profile: your own account (not the workspace): name, email,
+// password, and deleting the account.
 export default function ProfilePage() {
   return (
     <PageContainer>
@@ -25,10 +28,14 @@ export default function ProfilePage() {
 async function ProfileSections() {
   const user = await requireUser();
   // Accounts made with a password have a "credential" login; only they can change it here.
-  const passwordLogin = await db.account.findFirst({
-    where: { userId: user.id, providerId: "credential" },
-    select: { id: true },
-  });
+  const [passwordLogin, deletionPlan] = await Promise.all([
+    db.account.findFirst({
+      where: { userId: user.id, providerId: "credential" },
+      select: { id: true },
+    }),
+    // What "Delete account" would delete or block (shown in its dialog).
+    getDeletionPlan(user.id),
+  ]);
 
   return (
     <>
@@ -64,6 +71,10 @@ async function ProfileSections() {
         </Link>
         .
       </p>
+
+      <Section title="Delete account">
+        <DeleteAccount plan={deletionPlan} hasPassword={Boolean(passwordLogin)} />
+      </Section>
     </>
   );
 }

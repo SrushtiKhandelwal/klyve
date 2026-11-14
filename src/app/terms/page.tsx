@@ -101,8 +101,8 @@ export default function TermsPage() {
           used for spam. Where it&apos;s reasonable, we&apos;ll tell you first and give you a chance to fix things.
         </li>
         <li>
-          You can stop using {BRAND.name} at any time, and ask us to delete your account by emailing{" "}
-          <InlineContactEmail />.
+          You can stop using {BRAND.name} at any time, and delete your account yourself in Settings → Profile (or
+          ask us to by emailing <InlineContactEmail />).
         </li>
       </ul>
 

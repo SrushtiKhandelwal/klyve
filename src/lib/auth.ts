@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { sendSystemEmail, type SystemEmail } from "@/lib/email/system-mailer";
 import { resetPasswordEmail, verifyEmailEmail } from "@/lib/email/system-templates";
 import { getGoogleOAuthConfig } from "@/lib/google-auth";
+import { deleteOwnedWorkspaces } from "@/lib/account-deletion";
 
 // Server-side authentication setup (Better Auth).
 // Users, sessions and passwords are stored in our own Postgres database.
@@ -134,6 +135,22 @@ export const auth = betterAuth({
   // Any other sign-in error (e.g. the Google step took too long) lands on
   // /login?error=<code> instead of Better Auth's plain built-in error page.
   onAPIError: { errorURL: "/login" },
+
+  // "Delete account" (Settings → Profile). Only reachable through our Server
+  // Action (src/app/actions/account.ts), which insists on the password, or on
+  // a login from the last few minutes for Google-only accounts. The public
+  // /api/auth/delete-user URL is switched off below, so nobody can skip that.
+  user: {
+    deleteUser: {
+      enabled: true,
+      // Deletes the workspaces this user owns alone (or refuses; see
+      // src/lib/account-deletion.ts). Runs after the password check.
+      beforeDelete: async (user) => {
+        await deleteOwnedWorkspaces(user.id);
+      },
+    },
+  },
+  disabledPaths: ["/delete-user", "/delete-user/callback"],
 
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
