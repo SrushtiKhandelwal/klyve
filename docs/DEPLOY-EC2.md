@@ -1,6 +1,6 @@
 # Deploying Klyve on AWS EC2 (PM2 + Nginx, no Docker)
 
-This is how Klyve actually runs in production (set up 2026-11-14):
+This is how Klyve actually runs in production (set up 2026-11-14). Live at **https://app.klyveapp.tech** (klyveapp.tech, www and the bare IP redirect there).
 
 ```
 people ──HTTP(S)──▶ Nginx ──▶ PM2 (one Klyve process: website + sending worker) ──▶ PostgreSQL 17
@@ -65,7 +65,7 @@ Restore (replaces current data; stop the app first: `pm2 stop klyve`):
 gunzip -c ~/klyve/backups/klyve-YYYY-MM-DD-HHMM.sql.gz | psql "postgresql://klyve:<password>@localhost:5432/klyve"
 ```
 
-## Connecting the domain (do after everything works on the IP)
+## Connecting the domain (DONE 2026-11-14; kept for reference)
 
 1. EC2 → **Elastic IPs** → allocate one and associate it with `klyve-server` (the plain public
    IP changes whenever the server is stopped and started).
