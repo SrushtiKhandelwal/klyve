@@ -46,6 +46,25 @@ async function FooterContactInner() {
   );
 }
 
+/**
+ * The address as a link inside a sentence, e.g. "email <InlineContactEmail />."
+ * on the Privacy and Terms pages. Shows `fallback` ("us") while the browser
+ * decodes it, or when CONTACT_EMAIL isn't set.
+ */
+export function InlineContactEmail({ fallback = "us" }: { fallback?: string }) {
+  return (
+    <Suspense fallback={fallback}>
+      <InlineContactEmailInner fallback={fallback} />
+    </Suspense>
+  );
+}
+
+async function InlineContactEmailInner({ fallback }: { fallback: string }) {
+  const code = await contactCode();
+  if (!code) return <>{fallback}</>;
+  return <ContactEmailLink code={code} fallback={fallback} className={linkClass} />;
+}
+
 /** "Still have a question? Email us at …", for the end of the FAQ. */
 export function FaqContact() {
   return (

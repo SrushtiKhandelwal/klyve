@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { InlineContactEmail } from "@/components/landing/contact-email";
 import { LegalPage } from "@/components/landing/legal-page";
 import { BRAND } from "@/lib/brand";
 import { TRANSACTIONAL_LIMITS } from "@/lib/transactional/schema";
 
-// DRAFT, have it reviewed before launch.
-// This is a plain-English STARTER privacy policy, not legal advice. Before
-// going live: fill in every [placeholder], replace privacy@your-domain with a
-// real inbox, list your real hosting providers, and have a lawyer review it.
+// Klyve's privacy policy, in plain English, written for how Klyve actually
+// runs (one AWS server in Mumbai, Amazon SES for our own emails, Groq for AI
+// help, Google sign-in). It isn't legal advice: if Klyve grows, have a lawyer
+// review it. Update LAST_UPDATED (and email users about big changes) whenever
+// it changes, e.g. when a new service starts receiving data.
 //
-// The page is static (nothing read per request), so it's prerendered.
+// The contact address comes from CONTACT_EMAIL (never written in the code, as
+// the repository is public) and is shown scrambled to spam bots.
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -17,19 +20,19 @@ export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
 };
 
-const CONTACT_EMAIL = "privacy@your-domain";
+const LAST_UPDATED = "15 November 2026";
 const L = TRANSACTIONAL_LIMITS;
 
 export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      lastUpdated="[date]"
+      lastUpdated={LAST_UPDATED}
       intro={
         <p>
-          {BRAND.name} is a free email marketing tool. You connect your own sending provider, and we give you the
-          tools to manage contacts and send email through it. This page explains what data we keep, why, and the
-          choices you have.
+          {BRAND.name} is a free email marketing tool, run by Srushti Khandelwal, an independent developer based in
+          India. You connect your own sending provider, and we give you the tools to manage contacts and send email
+          through it. This page explains what data we keep, why, and the choices you have.
         </p>
       }
     >
@@ -37,8 +40,8 @@ export default function PrivacyPage() {
       <p>There are two kinds of people whose data we handle:</p>
       <ul>
         <li>
-          <strong>You, our user.</strong> For your account details, {BRAND.name} ([company name, address]) is the
-          data controller.
+          <strong>You, our user.</strong> For your account details, {BRAND.name} (run by Srushti Khandelwal, India) is
+          the data controller. In this policy, &quot;we&quot; and &quot;us&quot; means {BRAND.name}.
         </li>
         <li>
           <strong>Your contacts</strong>, the people on the lists you upload. For their data, <em>you</em> are the
@@ -65,6 +68,7 @@ export default function PrivacyPage() {
         <li>Lists, segments, custom fields, templates, campaigns, automations, sign-up forms and brand kit settings.</li>
         <li>Images and files you upload to use in your emails.</li>
         <li>API keys you create (stored so we can check them, not so we can show them again).</li>
+        <li>A count of how often your workspace uses the AI writing help (not the text itself), to apply usage limits.</li>
       </ul>
 
       <h3>Contacts you upload (as your processor)</h3>
@@ -102,9 +106,11 @@ export default function PrivacyPage() {
 
       <h2>Cookies</h2>
       <p>
-        We only use cookies that are needed for the service to work: one to keep you logged in, and one to remember
-        which workspace you have open. We don&apos;t use advertising or analytics cookies. The API docs page also
-        remembers your preferred code language in your browser&apos;s storage; it never leaves your device.
+        We only use cookies that are needed for the service to work: one to keep you logged in, one to remember which
+        workspace you have open, and short-lived ones while you log in (for two-step login and for signing in with
+        Google). If you choose &quot;trust this device&quot; at two-step login, a cookie remembers that for 30 days.
+        We don&apos;t use advertising or analytics cookies. The API docs page also remembers your preferred code
+        language in your browser&apos;s storage; it never leaves your device.
       </p>
 
       <h2>Who else receives data (sub-processors)</h2>
@@ -115,11 +121,30 @@ export default function PrivacyPage() {
           own privacy policy and terms apply, under your account with them.
         </li>
         <li>
-          <strong>[Hosting provider]</strong> and <strong>[database provider]</strong>, which run our servers and
-          store data in [region].
+          <strong>Amazon Web Services (AWS)</strong> runs our server and database in Mumbai, India. Everything
+          described in this policy is stored there.
+        </li>
+        <li>
+          <strong>Amazon SES</strong> (part of AWS) sends {BRAND.name}&apos;s own emails to you: email verification,
+          password resets and team invitations. It receives your email address and that email.
+        </li>
+        <li>
+          <strong>Groq, Inc.</strong> (United States) powers the optional AI writing help. Only when you use an AI
+          feature, the text you typed and the details that request needs (for example a campaign&apos;s subject, or
+          the numbers in a report you ask it to explain) are sent to Groq to write the answer. We don&apos;t keep that
+          text.
+        </li>
+        <li>
+          <strong>Google</strong>, only if you choose &quot;Continue with Google&quot; to log in (see above).
+        </li>
+        <li>
+          <strong>ImprovMX</strong> forwards emails you send to our contact address to our inbox.
         </li>
       </ul>
-      <p>We may also disclose data if the law requires it.</p>
+      <p>
+        Because our servers are in India, your data is processed in India, wherever you live. We may also disclose
+        data if the law requires it.
+      </p>
 
       <h2>How long we keep it</h2>
       <ul>
@@ -132,23 +157,30 @@ export default function PrivacyPage() {
           Suppressed addresses (unsubscribes, bounces and complaints) are kept while your workspace exists, so
           those people are never emailed again by mistake.
         </li>
-        <li>When an account is deleted, its data is removed within [30] days, and from backups within [90] days.</li>
+        <li>
+          When you ask us to delete your account, we delete its data within 30 days. Copies in our nightly backups
+          are overwritten within 14 days after that.
+        </li>
       </ul>
 
-      <h2>Your rights (GDPR and similar laws)</h2>
+      <h2>Your rights (GDPR, India&apos;s DPDP Act and similar laws)</h2>
       <p>
         You can ask to access, correct, delete or export your personal data, to restrict or object to how we use
         it, and you can complain to your local data protection authority.
       </p>
       <ul>
         <li>
-          <strong>Users:</strong> you can change most details yourself in the app. For anything else, email{" "}
-          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. We&apos;ll reply within 30 days.
+          <strong>Users:</strong> you can change most details yourself in the app. To delete your account, or for
+          anything else, email <InlineContactEmail />. We&apos;ll reply within 30 days.
         </li>
         <li>
           <strong>Contacts of a {BRAND.name} user:</strong> please contact the sender who emailed you first; they
           control your data and can export or erase it from their workspace. Every marketing email also has an
           unsubscribe link. If you can&apos;t reach them, email us and we&apos;ll help.
+        </li>
+        <li>
+          <strong>In India:</strong> the same address is our contact for grievances under the Digital Personal Data
+          Protection Act, 2023.
         </li>
       </ul>
 
@@ -160,7 +192,9 @@ export default function PrivacyPage() {
       </p>
 
       <h2>Children</h2>
-      <p>{BRAND.name} isn&apos;t meant for children under 16, and we don&apos;t knowingly collect their data.</p>
+      <p>
+        {BRAND.name} is meant for adults (18 or older), and we don&apos;t knowingly collect data from anyone younger.
+      </p>
 
       <h2>Changes to this policy</h2>
       <p>
@@ -170,8 +204,7 @@ export default function PrivacyPage() {
 
       <h2>Contact</h2>
       <p>
-        Questions about privacy? Email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. See also our{" "}
-        <Link href="/terms">Terms of Service</Link>.
+        Questions about privacy? Email <InlineContactEmail />. See also our <Link href="/terms">Terms of Service</Link>.
       </p>
     </LegalPage>
   );

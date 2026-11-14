@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { InlineContactEmail } from "@/components/landing/contact-email";
 import { LegalPage } from "@/components/landing/legal-page";
 import { BRAND } from "@/lib/brand";
 
-// DRAFT, have it reviewed before launch.
-// These are plain-English STARTER terms, not legal advice. Before going
-// live: fill in every [placeholder] (company, governing law, contact inbox)
-// and have a lawyer review them.
+// Klyve's terms, in plain English. Klyve is run by Srushti Khandelwal as an
+// individual (no company), under Indian law. Not legal advice: if Klyve grows
+// (or starts charging), have a lawyer review them. Update LAST_UPDATED, and
+// email users about important changes, whenever they change.
 //
-// The page is static (nothing read per request), so it's prerendered.
+// The contact address comes from CONTACT_EMAIL and is shown scrambled to spam bots.
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -16,24 +17,25 @@ export const metadata: Metadata = {
   alternates: { canonical: "/terms" },
 };
 
-const CONTACT_EMAIL = "legal@your-domain";
+const LAST_UPDATED = "15 November 2026";
 
 export default function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service"
-      lastUpdated="[date]"
+      lastUpdated={LAST_UPDATED}
       intro={
         <p>
-          These terms are the agreement between you and {BRAND.name} ([company name]) when you use the service. By
-          creating an account, you agree to them. We&apos;ve kept them short and plain on purpose.
+          These terms are the agreement between you and Srushti Khandelwal, an independent developer based in India
+          who runs {BRAND.name} (&quot;we&quot;, &quot;us&quot;), when you use the service. By creating an account,
+          you agree to them. We&apos;ve kept them short and plain on purpose.
         </p>
       }
     >
       <h2>1. Your account</h2>
       <ul>
         <li>Give us accurate details and keep your password safe. You&apos;re responsible for what happens in your account.</li>
-        <li>You must be old enough to agree to these terms where you live, and at least 16.</li>
+        <li>You must be at least 18, and old enough to agree to these terms where you live.</li>
         <li>If you use {BRAND.name} for a business, you agree to these terms on its behalf.</li>
       </ul>
 
@@ -98,7 +100,10 @@ export default function TermsPage() {
           We may suspend or close accounts that break these terms, put the service or other users at risk, or are
           used for spam. Where it&apos;s reasonable, we&apos;ll tell you first and give you a chance to fix things.
         </li>
-        <li>You can stop using {BRAND.name} at any time, and ask us to delete your account.</li>
+        <li>
+          You can stop using {BRAND.name} at any time, and ask us to delete your account by emailing{" "}
+          <InlineContactEmail />.
+        </li>
       </ul>
 
       <h2>6. A free service, provided as is</h2>
@@ -113,7 +118,8 @@ export default function TermsPage() {
       <p>
         To the extent the law allows, {BRAND.name} isn&apos;t liable for indirect or consequential losses, such
         as lost profits, lost data or damage to reputation, or for anything caused by your sending provider.
-        Because the service is free, our total liability to you for any claim is limited to [amount]. Nothing in
+        Because the service is free, our total liability to you for all claims is limited to the amount you paid us
+        in the 12 months before the claim (nothing, for a free account) or US$10, whichever is greater. Nothing in
         these terms limits liability that can&apos;t be limited by law.
       </p>
 
@@ -126,13 +132,13 @@ export default function TermsPage() {
 
       <h2>9. Governing law</h2>
       <p>
-        These terms are governed by the laws of [country / state], and disputes will be handled by the courts of
-        [place], unless the law where you live gives you the right to bring a claim locally.
+        These terms are governed by the laws of India, and disputes will be handled by the courts of India, unless
+        the law where you live gives you the right to bring a claim locally.
       </p>
 
       <h2>10. Contact</h2>
       <p>
-        Questions about these terms? Email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+        Questions about these terms? Email <InlineContactEmail />.
       </p>
     </LegalPage>
   );
