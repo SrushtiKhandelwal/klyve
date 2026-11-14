@@ -1,5 +1,8 @@
 # Deploying Klyve
 
+> **Not the setup in use.** Klyve runs on EC2 with PM2 + Nginx and no Docker: see
+> `docs/DEPLOY-EC2.md`. This Docker/Lightsail guide is kept as an alternative.
+
 This guide puts Klyve on the internet on **one Linux server** with Docker:
 
 ```
