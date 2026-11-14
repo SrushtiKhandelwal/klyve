@@ -16,3 +16,4 @@ Requests #1–#8 were built and approved on 2026-11-14 (design refresh merged in
 | 9 | Landing | Hero section | Redo both sides: no centred hero, no live stats panel. Now an ivory band with a highlighted headline and a colourful email collage that fits the first screen. | Done |
 | 10 | Landing | Navbar | Too basic. Rejected so far: top announcement strip, beige box around links, floating card bar, and 4 offered styles. Product menu is liked and kept. | Parked |
 | 11 | Brand | Logo | New logo: Soft K seal (emerald badge, white soft K, saffron dot, Urbanist wordmark), also the browser tab and phone icons. | Done |
+| 12 | Settings | Team (ownership) | Transfer workspace ownership to another member. Needed so an owner with teammates can delete their account without the workspace being deleted (today they must remove the teammates first). | Parked |
