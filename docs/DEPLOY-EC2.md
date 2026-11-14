@@ -12,7 +12,9 @@ Everything is installed directly on one Ubuntu server. No Docker.
 | Thing | Value |
 |---|---|
 | Server | EC2 `klyve-server`, Mumbai (ap-south-1), t3.small (2 vCPU, 2 GB) + 2 GB swap, 30 GB disk, Ubuntu 24.04 |
-| Login | `ssh -i C:\Users\srush\.ssh\klyve-key.pem ubuntu@<server IP>` |
+| Address | Elastic IP **13.206.214.215**; DNS A records `app`, `@`, `www` at get.tech |
+| HTTPS | Let's Encrypt via certbot (Nginx plugin), renews itself (certbot.timer) |
+| Login | `ssh -i C:\Users\srush\.ssh\klyve-key.pem ubuntu@13.206.214.215` |
 | App folder | `/home/ubuntu/klyve` (a clone of this repo) |
 | Settings | `/home/ubuntu/klyve/.env` (only on the server, never in git) |
 | Firewall (security group) | 22 (SSH), 80 (HTTP), 443 (HTTPS). Postgres listens on 127.0.0.1 only; the app on 127.0.0.1:3000 only. |
