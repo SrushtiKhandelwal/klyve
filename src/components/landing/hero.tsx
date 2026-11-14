@@ -20,7 +20,7 @@ export function Hero() {
   return (
     <section aria-labelledby="hero-title">
       <div className="border-b border-[#EAE3D4] bg-[#FBF8F2]">
-        <div className="mx-auto grid w-full max-w-[84rem] grid-cols-1 items-center gap-12 px-4 pt-12 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14 lg:px-10 lg:pt-20 lg:pb-24">
+        <div className="mx-auto grid w-full max-w-[84rem] grid-cols-1 items-center gap-12 px-4 pt-12 pb-16 sm:px-6 sm:pt-16 lg:min-h-[calc(100svh-4.25rem-2px)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14 lg:px-10 lg:py-8">
           <div className="max-w-[36rem]">
             <p
               style={delay(0)}

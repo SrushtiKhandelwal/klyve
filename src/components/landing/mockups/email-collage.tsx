@@ -6,6 +6,9 @@ import { Glyph } from "@/components/brand/glyph";
 // (made-up) brands, each in its own colours, fanned out on a soft mint block.
 // It says "every brand can look like itself" without a single word.
 //
+// On wide screens its height is capped by the window height, so the whole
+// hero fits on the first screen without scrolling.
+//
 // Everything scales with the collage's own width (container query units,
 // "cqw"), so it looks the same on a phone and on a wide screen.
 // Pure decoration: hidden from screen readers (the hero text says it all).
@@ -14,7 +17,7 @@ const float = (seconds: number) => ({ "--float-delay": `${seconds}s` }) as CSSPr
 
 export function EmailCollage() {
   return (
-    <div aria-hidden="true" className="relative mx-auto aspect-[1/1.08] w-full max-w-[620px] [container-type:inline-size]">
+    <div aria-hidden="true" className="relative mx-auto aspect-[1/1.08] w-full max-w-[620px] [container-type:inline-size] lg:w-[min(100%,calc((100svh-9rem)/1.08))]">
       {/* Flat colour shapes behind the emails (no blur, no glow). */}
       <div className="absolute inset-[7%_3%_5%_6%] rounded-[2.2rem] bg-[#DCEFE3]" />
       <div className="absolute top-[-3%] right-[-2%] size-[20cqw] rounded-full bg-[#F6C453]" />
