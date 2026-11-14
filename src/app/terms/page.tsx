@@ -13,6 +13,7 @@ import { BRAND } from "@/lib/brand";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description: `The rules for using ${BRAND.name}, the free email marketing tool where you bring your own sending provider.`,
+  alternates: { canonical: "/terms" },
 };
 
 const CONTACT_EMAIL = "legal@your-domain";

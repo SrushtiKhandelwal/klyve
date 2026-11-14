@@ -2,9 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SignupForm } from "@/components/auth/signup-form";
+import { googleSignInEnabled } from "@/lib/google-auth";
+import { BRAND } from "@/lib/brand";
+
+const DESCRIPTION = `Create your free ${BRAND.name} account. No credit card needed: connect your own sending provider and start sending email campaigns.`;
 
 export const metadata: Metadata = {
-  title: "Sign up", // shown as "Sign up | Klyve" (see app/layout.tsx)
+  title: "Sign up free", // shown as "Sign up free | Klyve" (see app/layout.tsx)
+  description: DESCRIPTION,
+  alternates: { canonical: "/signup" },
 };
 
 // This page is a static shell; the interactive form is a Client Component.
@@ -21,7 +27,7 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="px-6 sm:px-8">
-          <SignupForm />
+          <SignupForm googleEnabled={googleSignInEnabled()} />
         </CardContent>
       </Card>
 

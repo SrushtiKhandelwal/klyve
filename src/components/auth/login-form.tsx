@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/auth/form-field";
 import { friendlyAuthError, looksLikeEmail } from "@/components/auth/auth-errors";
 import { safeNextPath, withNext } from "@/components/auth/safe-next";
+import { GoogleButton, GoogleErrorNotice, OrDivider } from "@/components/auth/google-button";
 
 type FieldErrors = { email?: string; password?: string };
 
@@ -45,7 +46,7 @@ function SignupLink() {
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -90,69 +91,83 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="grid gap-5">
+    <div className="grid gap-5">
+      {/* A Google sign-in that failed comes back here as /login?error=... */}
       <Suspense fallback={null}>
-        <ResetSuccessNotice />
+        <GoogleErrorNotice />
       </Suspense>
 
-      {/* Server errors (like a wrong password) appear here and are read
-          out by screen readers thanks to role="alert". */}
-      {formError && (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-        >
-          {formError}
-        </div>
+      {googleEnabled && (
+        <>
+          <GoogleButton />
+          <OrDivider />
+        </>
       )}
 
-      <FormField
-        id="email"
-        label="Email"
-        type="email"
-        autoComplete="email"
-        placeholder="you@example.com"
-        error={fieldErrors.email}
-        disabled={loading}
-      />
-      <FormField
-        id="password"
-        label="Password"
-        type="password"
-        autoComplete="current-password"
-        error={fieldErrors.password}
-        disabled={loading}
-        labelAction={
-          <Link
-            href="/forgot-password"
-            className="text-sm font-medium text-emerald-700 hover:underline"
+      <form onSubmit={handleSubmit} noValidate className="grid gap-5">
+        <Suspense fallback={null}>
+          <ResetSuccessNotice />
+        </Suspense>
+
+        {/* Server errors (like a wrong password) appear here and are read
+            out by screen readers thanks to role="alert". */}
+        {formError && (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
           >
-            Forgot password?
-          </Link>
-        }
-      />
+            {formError}
+          </div>
+        )}
 
-      <Button
-        type="submit"
-        disabled={loading}
-        className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
-      >
-        {loading && <Loader2Icon className="animate-spin" aria-hidden="true" />}
-        {loading ? "Logging in..." : "Log in"}
-      </Button>
-
-      <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
-        <Suspense
-          fallback={
-            <Link href="/signup" className="font-medium text-emerald-700 hover:underline">
-              Sign up
+        <FormField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          error={fieldErrors.email}
+          disabled={loading}
+        />
+        <FormField
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          error={fieldErrors.password}
+          disabled={loading}
+          labelAction={
+            <Link
+              href="/forgot-password"
+              className="text-sm font-medium text-emerald-700 hover:underline"
+            >
+              Forgot password?
             </Link>
           }
+        />
+
+        <Button
+          type="submit"
+          disabled={loading}
+          className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
         >
-          <SignupLink />
-        </Suspense>
-      </p>
-    </form>
+          {loading && <Loader2Icon className="animate-spin" aria-hidden="true" />}
+          {loading ? "Logging in..." : "Log in"}
+        </Button>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Suspense
+            fallback={
+              <Link href="/signup" className="font-medium text-emerald-700 hover:underline">
+                Sign up
+              </Link>
+            }
+          >
+            <SignupLink />
+          </Suspense>
+        </p>
+      </form>
+    </div>
   );
 }

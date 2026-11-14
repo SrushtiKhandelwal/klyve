@@ -14,6 +14,7 @@ import { TRANSACTIONAL_LIMITS } from "@/lib/transactional/schema";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: `How ${BRAND.name} collects, uses and protects your data and your contacts' data.`,
+  alternates: { canonical: "/privacy" },
 };
 
 const CONTACT_EMAIL = "privacy@your-domain";
@@ -51,6 +52,11 @@ export default function PrivacyPage() {
       <ul>
         <li>Your name, email address and a securely hashed password (we never store the password itself).</li>
         <li>Whether your email address is verified, and which workspaces you belong to.</li>
+        <li>
+          If you log in with Google: the name, email address and profile picture Google shares with us, and the sign-in
+          tokens Google gives us (stored encrypted). We don&apos;t ask Google for anything else, so we can&apos;t see
+          your Gmail, contacts or files.
+        </li>
         <li>For each login session: the IP address and browser type, so you can stay logged in and we can spot misuse.</li>
       </ul>
 

@@ -13,6 +13,7 @@ import {
   looksLikeEmail,
 } from "@/components/auth/auth-errors";
 import { safeNextPath, withNext } from "@/components/auth/safe-next";
+import { GoogleButton, OrDivider } from "@/components/auth/google-button";
 
 type FieldErrors = {
   name?: string;
@@ -45,7 +46,7 @@ function LoginLinkWithFallback({ className, children }: { className: string; chi
   );
 }
 
-export function SignupForm() {
+export function SignupForm({ googleEnabled = false }: { googleEnabled?: boolean }) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -98,68 +99,77 @@ export function SignupForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="grid gap-5">
-      {formError && (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-        >
-          {formError}{" "}
-          {/* Small shortcut when the email is already registered. */}
-          {emailTaken && <LoginLinkWithFallback className="font-medium underline">Log in</LoginLinkWithFallback>}
-        </div>
+    <div className="grid gap-5">
+      {googleEnabled && (
+        <>
+          <GoogleButton label="Sign up with Google" />
+          <OrDivider />
+        </>
       )}
 
-      <FormField
-        id="name"
-        label="Full name"
-        type="text"
-        autoComplete="name"
-        placeholder="Jane Doe"
-        error={fieldErrors.name}
-        disabled={loading}
-      />
-      <FormField
-        id="email"
-        label="Work email"
-        type="email"
-        autoComplete="email"
-        placeholder="you@example.com"
-        error={fieldErrors.email}
-        disabled={loading}
-      />
-      <FormField
-        id="password"
-        label="Password"
-        type="password"
-        // "new-password" tells password managers to suggest a strong password.
-        autoComplete="new-password"
-        placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-        error={fieldErrors.password}
-        disabled={loading}
-      />
-      <FormField
-        id="confirmPassword"
-        label="Confirm password"
-        type="password"
-        autoComplete="new-password"
-        error={fieldErrors.confirmPassword}
-        disabled={loading}
-      />
+      <form onSubmit={handleSubmit} noValidate className="grid gap-5">
+        {formError && (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          >
+            {formError}{" "}
+            {/* Small shortcut when the email is already registered. */}
+            {emailTaken && <LoginLinkWithFallback className="font-medium underline">Log in</LoginLinkWithFallback>}
+          </div>
+        )}
 
-      <Button
-        type="submit"
-        disabled={loading}
-        className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
-      >
-        {loading && <Loader2Icon className="animate-spin" aria-hidden="true" />}
-        {loading ? "Creating your account..." : "Create account"}
-      </Button>
+        <FormField
+          id="name"
+          label="Full name"
+          type="text"
+          autoComplete="name"
+          placeholder="Jane Doe"
+          error={fieldErrors.name}
+          disabled={loading}
+        />
+        <FormField
+          id="email"
+          label="Work email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          error={fieldErrors.email}
+          disabled={loading}
+        />
+        <FormField
+          id="password"
+          label="Password"
+          type="password"
+          // "new-password" tells password managers to suggest a strong password.
+          autoComplete="new-password"
+          placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+          error={fieldErrors.password}
+          disabled={loading}
+        />
+        <FormField
+          id="confirmPassword"
+          label="Confirm password"
+          type="password"
+          autoComplete="new-password"
+          error={fieldErrors.confirmPassword}
+          disabled={loading}
+        />
 
-      <p className="text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
-        <LoginLinkWithFallback className="font-medium text-emerald-700 hover:underline">Log in</LoginLinkWithFallback>
-      </p>
-    </form>
+        <Button
+          type="submit"
+          disabled={loading}
+          className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-700"
+        >
+          {loading && <Loader2Icon className="animate-spin" aria-hidden="true" />}
+          {loading ? "Creating your account..." : "Create account"}
+        </Button>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <LoginLinkWithFallback className="font-medium text-emerald-700 hover:underline">Log in</LoginLinkWithFallback>
+        </p>
+      </form>
+    </div>
   );
 }

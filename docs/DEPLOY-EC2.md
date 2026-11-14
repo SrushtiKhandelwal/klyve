@@ -50,9 +50,10 @@ sudo nginx -t && sudo systemctl reload nginx   # after editing the Nginx config
 | `APP_URL`, `BETTER_AUTH_URL` | The public address. `http://<IP>` until the domain is connected, then `https://app.klyveapp.tech`. Rebuild + restart after changing (`update.sh`). |
 | `BETTER_AUTH_SECRET` | Random, generated on the server. |
 | `ENCRYPTION_KEY` | Random, generated on the server. **Keep a copy in a password manager**: it encrypts users' provider passwords/API keys; if it's lost they all have to reconnect. |
-| `SYSTEM_SMTP_URL` | Klyve's own emails (verify, reset, invites). Empty until Amazon SES is ready; until then those emails fail. |
+| `SYSTEM_SMTP_HOST`, `_PORT`, `_USER`, `_PASS` | Klyve's own emails (verify, reset, invites) through Amazon SES (`email-smtp.ap-south-1.amazonaws.com`, 465, IAM user `klyve-ses-smtp`). `SYSTEM_SMTP_URL` stays empty. SES production access requested 2026-11-14; until AWS approves it, SES only delivers to verified addresses (e.g. @klyveapp.tech). |
 | `GROQ_API_KEY` | AI writing help. Paste your key; then `pm2 restart klyve`. |
 | `CONTACT_EMAIL` | `hello@klyveapp.tech` (forwarded to Gmail by ImprovMX). |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | "Continue with Google". Google Cloud project **Klyve** (`klyve-514718`, owned by the main Gmail) → Google Auth Platform → Clients → "Klyve web". Redirect URIs: `https://app.klyveapp.tech/api/auth/callback/google` and `http://localhost:3000/api/auth/callback/google`. The secret is shown only once at creation; if it's lost, add a new secret there. Run `update.sh` after changing (the button is built into the page). |
 
 ## Backups
 

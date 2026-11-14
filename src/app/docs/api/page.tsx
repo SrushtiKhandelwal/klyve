@@ -16,9 +16,12 @@ import { C, Callout, DocSection, DocTable, Endpoint, FieldList, H3 } from "./par
 // src/lib/transactional/schema.ts, the same file the API itself uses, so
 // the docs can't drift from the real rules.
 
+const DOCS_DESCRIPTION = `Send receipts, password resets and other one-to-one emails from your app through ${BRAND.name}.`;
+
 export const metadata: Metadata = {
   title: "Transactional email API",
-  description: `Send receipts, password resets and other one-to-one emails from your app through ${BRAND.name}.`,
+  description: DOCS_DESCRIPTION,
+  alternates: { canonical: "/docs/api" },
 };
 
 const SECTIONS: DocsSection[] = [

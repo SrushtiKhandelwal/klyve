@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { TwoFactorForm } from "@/components/auth/two-factor-form";
 import { safeNextPath } from "@/components/auth/safe-next";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX, // a step in the login flow: keep it out of search results
   title: "Two-step login",
 };
 

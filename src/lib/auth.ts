@@ -7,6 +7,7 @@ import { BRAND } from "@/lib/brand";
 import { db } from "@/lib/db";
 import { sendSystemEmail, type SystemEmail } from "@/lib/email/system-mailer";
 import { resetPasswordEmail, verifyEmailEmail } from "@/lib/email/system-templates";
+import { getGoogleOAuthConfig } from "@/lib/google-auth";
 
 // Server-side authentication setup (Better Auth).
 // Users, sessions and passwords are stored in our own Postgres database.
@@ -58,6 +59,8 @@ function buildEmailLink(betterAuthUrl: string, landingPath: string): string {
   return link.toString();
 }
 
+const google = getGoogleOAuthConfig();
+
 export const auth = betterAuth({
   baseURL: APP_URL,
   database: prismaAdapter(db, { provider: "postgresql" }),
@@ -99,6 +102,38 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     expiresIn: 60 * 60 * 24, // 24 hours (the email says so too)
   },
+
+  // "Continue with Google" (only when GOOGLE_CLIENT_ID/SECRET are set).
+  // Google tells us the person's name, email and photo; we ask for nothing else.
+  // Google's callback address is <APP_URL>/api/auth/callback/google; it must be
+  // listed under the Google client's "Authorized redirect URIs".
+  socialProviders: google
+    ? {
+        google: {
+          clientId: google.clientId,
+          clientSecret: google.clientSecret,
+          // Always show Google's account chooser, so someone with several
+          // Google accounts picks the right one.
+          prompt: "select_account",
+        },
+      }
+    : {},
+
+  // Someone who already has a Klyve account (email + password) clicks
+  // "Continue with Google" with the same email: Better Auth joins the Google
+  // login to that account ONLY if they've verified their email with us
+  // (default `requireLocalEmailVerified: true`). Otherwise anyone could
+  // pre-register a victim's email with a password, wait for the victim to
+  // use Google, and keep a password into their account. Unverified accounts
+  // get "account_not_linked" (the login page explains what to do).
+  account: {
+    accountLinking: { enabled: true, requireLocalEmailVerified: true },
+    // Google's sign-in tokens are kept in the database, encrypted.
+    encryptOAuthTokens: true,
+  },
+  // Any other sign-in error (e.g. the Google step took too long) lands on
+  // /login?error=<code> instead of Better Auth's plain built-in error page.
+  onAPIError: { errorURL: "/login" },
 
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days

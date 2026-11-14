@@ -50,7 +50,10 @@ async function ProfileSections() {
         {passwordLogin ? (
           <PasswordForm />
         ) : (
-          <p className="text-sm text-zinc-600">Your account doesn&apos;t use a password.</p>
+          <p className="text-sm text-zinc-600">
+            Your account doesn&apos;t use a password: you log in with Google. To add one, log out and use{" "}
+            <span className="font-medium text-zinc-800">Forgot password?</span> on the login page.
+          </p>
         )}
       </Section>
 

@@ -1,4 +1,5 @@
 import { Suspense, type ReactNode } from "react";
+import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { AuthGuard } from "@/components/dashboard/auth-guard";
 import { BrandMark } from "@/components/dashboard/brand-mark";
@@ -15,6 +16,10 @@ import { DatePrefsProvider } from "@/components/date-prefs-provider";
 import type { DatePrefs } from "@/lib/format-date";
 import { getActiveWorkspace } from "@/lib/workspace";
 import { getWorkspaceDatePrefs } from "@/lib/workspace-prefs";
+import { NO_INDEX } from "@/lib/seo";
+
+// Nothing behind the login belongs in search results.
+export const metadata: Metadata = { robots: NO_INDEX };
 
 // The logged-in app shell: sidebar + main content, shared by every page in
 // the (dashboard) group (/dashboard, /contacts, /campaigns, ...).

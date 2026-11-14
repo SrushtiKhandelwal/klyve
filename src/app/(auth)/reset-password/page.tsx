@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { InvalidResetLink } from "@/components/auth/invalid-reset-link";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX, // a step in the login flow: keep it out of search results
   title: "Choose a new password",
   // The reset token is in this page's URL. "no-referrer" stops the browser
   // from sending that URL to any other website the page links to or loads.

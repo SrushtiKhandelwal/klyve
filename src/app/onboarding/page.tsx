@@ -12,8 +12,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/lib/session";
 import { getUserWorkspaces } from "@/lib/workspace";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX, // a step in the login flow: keep it out of search results
   title: "Create your workspace",
 };
 

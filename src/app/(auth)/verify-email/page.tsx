@@ -8,8 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Glyph } from "@/components/brand/glyph";
 import { ResendVerificationButton } from "@/components/auth/resend-verification-button";
+import { NO_INDEX } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  robots: NO_INDEX, // a step in the login flow: keep it out of search results
   title: "Verify your email",
 };
 
