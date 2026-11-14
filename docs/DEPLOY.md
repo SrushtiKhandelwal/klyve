@@ -91,12 +91,20 @@ Klyve sends a few emails itself (verify email, password reset, double opt-in). A
 
 1. AWS console → **Amazon SES** (same region as above) → **Identities → Create identity → Domain** → `klyveapp.tech`, keep **Easy DKIM** on.
 2. SES shows **3 CNAME records**. Add them at get.tech DNS. After a while SES shows the domain as **Verified**.
-3. Also add these DNS records at get.tech (they help emails land in the inbox):
+3. Also add this DNS record at get.tech (it helps emails land in the inbox):
 
    | Type | Host | Value |
    |---|---|---|
-   | TXT | `@` | `v=spf1 include:amazonses.com ~all` |
-   | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:YOUR_EMAIL` |
+   | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:hello@klyveapp.tech` |
+
+   The SPF record is **already there** (added on 2026-11-14 together with the
+   hello@ forwarding): `v=spf1 include:spf.improvmx.com include:amazonses.com ~all`.
+   It covers both ImprovMX and Amazon SES. **Don't add a second SPF line**: a
+   domain may only have one, and two would break both.
+
+   Also already there: the two MX records (`mx1.improvmx.com` priority 10,
+   `mx2.improvmx.com` priority 20) that forward mail for hello@klyveapp.tech to
+   Gmail through ImprovMX. Leave them as they are.
 
 4. **SMTP settings → Create SMTP credentials.** Save the SMTP username and password (shown once).
 5. New SES accounts are in the **sandbox** (can only send to addresses you verified). Request **production access** under **Account dashboard → Request production access**: say it's for account emails (verification, password reset) of your app. Approval usually takes about a day.
@@ -144,6 +152,8 @@ docker run --rm node:22-alpine node -e "console.log(require('crypto').randomByte
 - `POSTGRES_PASSWORD`: another random value.
 - `KLYVE_DOMAIN`, `APP_URL`, `BETTER_AUTH_URL`: your app address.
 - `SYSTEM_SMTP_URL`: the SES SMTP URL from step 4. `SYSTEM_EMAIL_FROM`: e.g. `Klyve <no-reply@klyveapp.tech>`.
+- `GROQ_API_KEY`: your Groq key (the same one as in your laptop's `.env`, or a new one from https://console.groq.com/keys). Without it the AI buttons show "AI isn't set up".
+- `CONTACT_EMAIL`: `hello@klyveapp.tech` (shown in the site's footer and FAQ; forwarded to your Gmail by ImprovMX). Remove the `#` in front of that line.
 
 Save with `Ctrl+O`, `Enter`, `Ctrl+X`.
 
