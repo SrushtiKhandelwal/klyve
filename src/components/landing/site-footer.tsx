@@ -19,6 +19,8 @@ const COLUMNS = [
     links: [
       { href: "/docs/api", label: "API docs" },
       { href: "/#developers", label: "Transactional email" },
+      // Klyve is open source (AGPL-3.0).
+      { href: BRAND.sourceUrl, label: "Source code" },
     ],
   },
   {
@@ -66,7 +68,14 @@ export function SiteFooter() {
 
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 border-t border-zinc-200 px-4 py-6 text-sm text-zinc-500 sm:flex-row sm:justify-between sm:px-6">
         <p>
-          &copy; <CurrentYear /> {BRAND.name}
+          &copy; <CurrentYear /> {BRAND.name}. Open source under{" "}
+          <a
+            href={BRAND.sourceUrl}
+            className="rounded-sm underline-offset-4 outline-none hover:text-zinc-900 hover:underline focus-visible:ring-3 focus-visible:ring-emerald-600/40"
+          >
+            AGPL-3.0
+          </a>
+          .
         </p>
         <p>klyveapp.tech</p>
       </div>
