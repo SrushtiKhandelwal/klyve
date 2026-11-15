@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   // Turns relative links in metadata (canonical URLs, share images) into
-  // full https://app.klyveapp.tech/... addresses, as search engines need.
+  // full https://klyveapp.tech/... addresses, as search engines need.
   metadataBase: new URL(getAppUrl()),
   // A page that sets title: "Log in" shows as "Log in | Klyve" in the tab.
   // Pages without their own title just show the brand name.

@@ -26,7 +26,7 @@ if [ ! -f "$APP_DIR/.env" ]; then
 NODE_ENV="production"
 DATABASE_URL="postgresql://klyve:${DB_PASS}@localhost:5432/klyve?schema=public"
 
-# The public address. Change both to https://app.klyveapp.tech when the domain is connected.
+# The public address. Change both to https://klyveapp.tech when the domain is connected.
 APP_URL="${PUBLIC_URL}"
 BETTER_AUTH_URL="${PUBLIC_URL}"
 

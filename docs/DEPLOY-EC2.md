@@ -1,6 +1,6 @@
 # Deploying Klyve on AWS EC2 (PM2 + Nginx, no Docker)
 
-This is how Klyve actually runs in production (set up 2026-11-14). Live at **https://app.klyveapp.tech** (klyveapp.tech, www and the bare IP redirect there).
+This is how Klyve actually runs in production (set up 2026-11-14). Live at **https://klyveapp.tech** (since 2026-11-15; www and the bare IP redirect there). The first address, app.klyveapp.tech, redirects too, but keeps serving the links inside already-sent emails (see `deploy/ec2/nginx-klyve.conf`).
 
 ```
 people ──HTTP(S)──▶ Nginx ──▶ PM2 (one Klyve process: website + sending worker) ──▶ PostgreSQL 17
@@ -47,13 +47,13 @@ sudo nginx -t && sudo systemctl reload nginx   # after editing the Nginx config
 | Key | Notes |
 |---|---|
 | `DATABASE_URL` | Generated on first deploy (user `klyve`, random password). |
-| `APP_URL`, `BETTER_AUTH_URL` | The public address. `http://<IP>` until the domain is connected, then `https://app.klyveapp.tech`. Rebuild + restart after changing (`update.sh`). |
+| `APP_URL`, `BETTER_AUTH_URL` | The public address. `http://<IP>` until the domain is connected, then `https://klyveapp.tech`. Rebuild + restart after changing (`update.sh`). |
 | `BETTER_AUTH_SECRET` | Random, generated on the server. |
 | `ENCRYPTION_KEY` | Random, generated on the server. **Keep a copy in a password manager**: it encrypts users' provider passwords/API keys; if it's lost they all have to reconnect. |
 | `SYSTEM_SMTP_HOST`, `_PORT`, `_USER`, `_PASS` | Klyve's own emails (verify, reset, invites) through Amazon SES (`email-smtp.ap-south-1.amazonaws.com`, 465, IAM user `klyve-ses-smtp`). `SYSTEM_SMTP_URL` stays empty. SES production access requested 2026-11-14; until AWS approves it, SES only delivers to verified addresses (e.g. @klyveapp.tech). |
 | `GROQ_API_KEY` | AI writing help. Paste your key; then `pm2 restart klyve`. |
 | `CONTACT_EMAIL` | `hello@klyveapp.tech` (forwarded to Gmail by ImprovMX). |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | "Continue with Google". Google Cloud project **Klyve** (`klyve-514718`, owned by the main Gmail) → Google Auth Platform → Clients → "Klyve web". Redirect URIs: `https://app.klyveapp.tech/api/auth/callback/google` and `http://localhost:3000/api/auth/callback/google`. The secret is shown only once at creation; if it's lost, add a new secret there. Run `update.sh` after changing (the button is built into the page). |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | "Continue with Google". Google Cloud project **Klyve** (`klyve-514718`, owned by the main Gmail) → Google Auth Platform → Clients → "Klyve web". Redirect URIs: `https://klyveapp.tech/api/auth/callback/google` (and the old `https://app.klyveapp.tech/...` one) and `http://localhost:3000/api/auth/callback/google`. The secret is shown only once at creation; if it's lost, add a new secret there. Run `update.sh` after changing (the button is built into the page). |
 
 ## Backups
 
@@ -80,6 +80,11 @@ gunzip -c ~/klyve/backups/klyve-YYYY-MM-DD-HHMM.sql.gz | psql "postgresql://klyv
 5. In `.env` set `APP_URL` and `BETTER_AUTH_URL` to `https://app.klyveapp.tech`, then run `update.sh`.
 6. Amazon SES for `SYSTEM_SMTP_URL` (see `docs/DEPLOY.md` step 4 for the DNS records; the SPF
    record already exists).
+7. **2026-11-15: main address moved to `https://klyveapp.tech`** (no DNS change: `@` already
+   pointed at the server, and the certificate already covered it). New `deploy/ec2/nginx-klyve.conf`
+   copied to `/etc/nginx/sites-available/klyve`; `.env` `APP_URL`/`BETTER_AUTH_URL` →
+   `https://klyveapp.tech` + `update.sh`; Google client got the `https://klyveapp.tech` origin and
+   redirect URI; Search Console got the new sitemap. Keep the `app` A record: old email links use it.
 
 ## First-time setup (already done; for a new server)
 

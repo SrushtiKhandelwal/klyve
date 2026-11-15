@@ -1,6 +1,6 @@
 # Caddy gets and renews a free HTTPS certificate (Let's Encrypt) for your
 # domain automatically, then forwards everything to the Klyve app.
-# KLYVE_DOMAIN comes from .env.production (e.g. app.klyveapp.tech).
+# KLYVE_DOMAIN comes from .env.production (e.g. klyveapp.tech).
 {$KLYVE_DOMAIN} {
 	encode zstd gzip
 

@@ -21,7 +21,7 @@ Everything runs from `docker-compose.prod.yml`. You need about an hour the first
 | Thing | Why | Notes |
 |---|---|---|
 | Your **AWS account** | Runs the server (Lightsail) and sends Klyve's own emails (SES) | Turn on a **billing alert** first (step 0.1) so nothing surprises you. |
-| Your **domain** `klyveapp.tech` | The address people open | The app will live at `app.klyveapp.tech`. DNS is managed where you registered it (get.tech). |
+| Your **domain** `klyveapp.tech` | The address people open | The app lives at `klyveapp.tech`. DNS is managed where you registered it (get.tech). |
 | **SSH** | To run commands on the server | Lightsail has a "Connect using SSH" button in the browser — no setup needed. |
 
 ### 0.1 Billing alert (2 minutes, do this first)
@@ -52,7 +52,7 @@ At get.tech (where you manage `klyveapp.tech`) → DNS settings → add an **A r
 |---|---|---|
 | A | `app` | the Lightsail **static IP** |
 
-Wait until `ping app.klyveapp.tech` shows that IP (minutes to an hour).
+Wait until `ping klyveapp.tech` shows that IP (minutes to an hour).
 
 ---
 
@@ -174,7 +174,7 @@ The first build takes 5–10 minutes. Then check:
 docker compose -f docker-compose.prod.yml ps
 ```
 
-All three services should be `running` (the app becomes `healthy` after about a minute). Open `https://app.klyveapp.tech`. Caddy fetches the HTTPS certificate on the first visit.
+All three services should be `running` (the app becomes `healthy` after about a minute). Open `https://klyveapp.tech`. Caddy fetches the HTTPS certificate on the first visit.
 
 If something is wrong, read the logs:
 
@@ -247,7 +247,7 @@ gunzip -c backups/klyve-2026-01-01-0300.sql.gz | docker compose -f docker-compos
 
 ## 11. Monitoring
 
-- **Uptime:** point a free uptime monitor (UptimeRobot, Better Stack…) at `https://app.klyveapp.tech/api/health`. It returns `{"status":"ok"}` when the app and database work, and HTTP 503 otherwise.
+- **Uptime:** point a free uptime monitor (UptimeRobot, Better Stack…) at `https://klyveapp.tech/api/health`. It returns `{"status":"ok"}` when the app and database work, and HTTP 503 otherwise.
 - **Logs:** `docker compose -f docker-compose.prod.yml logs -f app`. The worker logs every problem with a `[campaign worker]` prefix.
 - **Disk:** `df -h` now and then. Logs and backups grow.
 
